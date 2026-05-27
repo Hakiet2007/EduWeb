@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { User, AppLanguage, AnswerSubmission } from "../types";
 import { translations } from "../utils/translations";
 import { Zap, Clock, ShieldAlert, CheckCircle2, AlertCircle, BookOpen, GraduationCap } from "lucide-react";
@@ -206,15 +206,22 @@ export default function DailyQuizTab({ currentUser, language, onRewardXp, onSave
   const [isCooldownBlocked, setIsCooldownBlocked] = useState(false);
   const [solvedCountToday, setSolvedCountToday] = useState(0);
 
-    // Check active cooldown status
-    const getCooldownStatus = () => {
-      if (!currentUser) return { isBlocked: false, timeLeftMs: 0, solvedCount: 0 };
-      if (currentUser.role === "dev") {
-        const todayStr = new Date().toISOString().split("T")[0];
-        const lastDate = currentUser.lastQuizSolvedDate || "";
-        const solvedCount = (lastDate && lastDate === todayStr) ? (currentUser.quizSolvedCountToday || 0) : 0;
-        return { isBlocked: false, timeLeftMs: 0, solvedCount };
-      }
+  const getLocalDateString = (date = new Date()) => {
+    const d = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return d.toISOString().split("T")[0];
+  };
+
+  const submittingRef = useRef(false);
+
+  // Check active cooldown status
+  const getCooldownStatus = () => {
+    if (!currentUser) return { isBlocked: false, timeLeftMs: 0, solvedCount: 0 };
+    if (currentUser.role === "dev") {
+      const todayStr = getLocalDateString();
+      const lastDate = currentUser.lastQuizSolvedDate || "";
+      const solvedCount = (lastDate && lastDate === todayStr) ? (currentUser.quizSolvedCountToday || 0) : 0;
+      return { isBlocked: false, timeLeftMs: 0, solvedCount };
+    }
 
     const now = Date.now();
     const cooldownTime = currentUser.quizCooldownUntil ? new Date(currentUser.quizCooldownUntil).getTime() : 0;
@@ -229,7 +236,7 @@ export default function DailyQuizTab({ currentUser, language, onRewardXp, onSave
     }
 
     // Check if answered count today is 12 or more
-    const todayStr = new Date().toISOString().split("T")[0];
+    const todayStr = getLocalDateString();
     const lastDate = currentUser.lastQuizSolvedDate || "";
     let solvedCount = currentUser.quizSolvedCountToday || 0;
 
@@ -304,6 +311,13 @@ export default function DailyQuizTab({ currentUser, language, onRewardXp, onSave
 
   // Fetch quizzes using exact selected subjects list
   const fetchQuizzes = async (subjectsToGenerate: string[]) => {
+    if (isCooldownBlocked) {
+      window.showToast?.(
+        language === "vi" ? "Bạn đang trong thời gian chờ (cooldown). Không thể tải đề lúc này!" : "You are currently in cooldown. Cannot generate quiz now!",
+        "role_alert"
+      );
+      return;
+    }
     if (subjectsToGenerate.length !== 3) {
       window.showToast?.(
         language === "vi" 
@@ -403,7 +417,8 @@ export default function DailyQuizTab({ currentUser, language, onRewardXp, onSave
   };
 
   const handleSubmitQuiz = () => {
-    if (isSubmitted || isCooldownBlocked) return;
+    if (isSubmitted || isCooldownBlocked || submittingRef.current) return;
+    submittingRef.current = true;
     // Check if three questions answered
     if (Object.keys(selectedAnswers).length < quizzes.length) {
       window.showToast?.(
@@ -466,6 +481,13 @@ export default function DailyQuizTab({ currentUser, language, onRewardXp, onSave
   };
 
   const startNewGenerationFlow = () => {
+    if (isCooldownBlocked) {
+      window.showToast?.(
+        language === "vi" ? "Bạn đang trong thời gian chờ (cooldown). Không thể tải đề lúc này!" : "You are currently in cooldown. Cannot generate quiz now!",
+        "role_alert"
+      );
+      return;
+    }
     if (selectedSubjects.length !== 3) {
       window.showToast?.(
         language === "vi" ? "Bạn cần chọn chính xác 3 môn học!" : "You must select exactly 3 subjects!",
@@ -875,6 +897,7 @@ export default function DailyQuizTab({ currentUser, language, onRewardXp, onSave
                 <div className="text-center pt-2">
                   <button
                     onClick={() => {
+                      submittingRef.current = false;
                       setIsConfiguringSubjects(true);
                       setQuizzes([]);
                       setSelectedAnswers({});
