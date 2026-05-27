@@ -520,6 +520,7 @@ app.post("/api/sync-data", (req, res) => {
             const clientDate = u.lastQuizSolvedDate || "";
             if (existingDate && clientDate) {
               if (existingDate === clientDate) {
+                merged.lastQuizSolvedDate = existingDate;
                 merged.quizSolvedCountToday = Math.max(existing.quizSolvedCountToday || 0, u.quizSolvedCountToday || 0);
               } else if (existingDate > clientDate) {
                 merged.lastQuizSolvedDate = existingDate;
@@ -531,6 +532,12 @@ app.post("/api/sync-data", (req, res) => {
             } else if (existingDate) {
               merged.lastQuizSolvedDate = existingDate;
               merged.quizSolvedCountToday = existing.quizSolvedCountToday;
+            } else if (clientDate) {
+              merged.lastQuizSolvedDate = clientDate;
+              merged.quizSolvedCountToday = u.quizSolvedCountToday;
+            } else {
+              merged.lastQuizSolvedDate = "";
+              merged.quizSolvedCountToday = 0;
             }
 
             // 2. Keep the future quizCooldownUntil representing any active cooldown period
