@@ -1,15 +1,23 @@
-import React, { useState, useEffect, useRef } from "react";
-import { User, AppLanguage, AnswerSubmission } from "../types";
-import { translations } from "../utils/translations";
-import { Zap, Clock, ShieldAlert, CheckCircle2, AlertCircle, BookOpen, GraduationCap } from "lucide-react";
-
-interface DailyQuizTabProps {
-  currentUser: User | null;
-  language: AppLanguage;
-  onRewardXp: (xpEarned: number) => void;
-  onSaveQuizSubmission?: (answers: AnswerSubmission[], xpEarned: number) => void;
-  onUpdateCurrentUser?: (user: User) => void;
-}
+import React, { useState } from "react";
+import { 
+  Play, 
+  CheckCircle, 
+  HelpCircle, 
+  BookOpen, 
+  Award, 
+  Compass, 
+  RefreshCw, 
+  UserCheck, 
+  Lock, 
+  Calendar,
+  Layers,
+  Sparkles,
+  AlertTriangle,
+  Flame,
+  Check,
+  X,
+  ChevronRight
+} from "lucide-react";
 
 interface QuizItem {
   subject: string;
@@ -19,13 +27,79 @@ interface QuizItem {
   explanation: string;
 }
 
+interface DailyQuizTabProps {
+  currentUser: any;
+  language: "vi" | "en";
+  onRewardXp: (amount: number, reasonVi: string, reasonEn: string) => void;
+  onSaveQuizSubmission: (submission: {
+    date: string;
+    score: number;
+    total: number;
+    subjects: string[];
+    grade: string;
+    xpEarned: number;
+  }) => void;
+  onUpdateCurrentUser: (updatedFields: Partial<any>) => void;
+}
+
+const translations = {
+  vi: {
+    title: "Thách Thức Trực Tuyến Hàng Ngày",
+    subtitle: "Tạo đề thi ngẫu nhiên bằng AI từ 3 môn học bất kỳ theo khung chương trình của bạn để rèn luyện trí tuệ.",
+    selectSubjects: "Chọn 3 môn học để AI xây dựng đề thi:",
+    gradeLabel: "Trình độ cấp lớp:",
+    generateBtn: "Bắt đầu tạo đề thi (AI Realtime)",
+    generating: "Mạng lưới AI đang biên soạn câu hỏi...",
+    submitting: "Đang chấm điểm và lưu kết quả...",
+    timeRemaining: "Thời gian còn lại",
+    xpEarned: "Bạn nhận được",
+    bypassCooldown: "Bỏ qua thời gian chờ (Chế độ Nhà phát triển)",
+    dailyLimitReached: "Hôm nay bạn đã vượt quá giới hạn 12 câu hỏi giải quyết hàng ngày!",
+    cooldownTitle: "Hệ thống AI đang nghỉ ngơi",
+    cooldownDesc: "Vui lòng đợi cho đến khi hết thời gian chờ để bắt đầu lượt thách thức tiếp theo.",
+    limitDesc: "Học tập hiệu quả đòi hỏi sự nghỉ ngơi. Hãy quay trở lại vào ngày mai nhé!",
+    score: "Điểm số của bạn",
+    passed: "ĐẠT CHỈ TIÊU!",
+    failed: "CẦN CỐ GẮNG HƠN",
+    correct: "Đúng",
+    incorrect: "Sai",
+    showExplanation: "Xem giải thích chi tiết",
+    submitBtn: "Nộp bài và Chấm điểm",
+    tryAgain: "Làm đề thi mới",
+  },
+  en: {
+    title: "Daily AI Learning Challenge",
+    subtitle: "AI builds active quiz generators with any 3 selected subjects matching your core curriculum grade.",
+    selectSubjects: "Select 3 subjects for personalized AI generated quizzes:",
+    gradeLabel: "Target Grade level:",
+    generateBtn: "Initiate Quiz Generation (Active AI)",
+    generating: "AI cognitive engine is designing questions...",
+    submitting: "Submitting scorecard and verifying solutions...",
+    timeRemaining: "Time remaining",
+    xpEarned: "You have earned",
+    bypassCooldown: "Bypass cooldown timer (Developer override)",
+    dailyLimitReached: "You have exceeded your allowance of 12 questions resolved today!",
+    cooldownTitle: "AI Quiz Cooldown Active",
+    cooldownDesc: "Please wait until the recovery timer cooldown runs out before initiating your next challenge.",
+    limitDesc: "Steady learning rewards pauses. Return tomorrow to build your streak higher!",
+    score: "Your Score",
+    passed: "CRITERION MET!",
+    failed: "PRACTICE MAKES PERFECT",
+    correct: "Correct",
+    incorrect: "Incorrect",
+    showExplanation: "Review Analytical Explanation",
+    submitBtn: "Submit and Score Exam",
+    tryAgain: "Formulate New Quiz",
+  }
+};
+
 const SUBJECT_POOL = [
-  { code: "Toán", vi: "Toán học", en: "Mathematics", icon: "📐", color: "from-blue-500/10 to-indigo-500/10 border-blue-200/50 dark:border-blue-900/30 text-blue-600 dark:text-blue-400" },
-  { code: "Lý", vi: "Vật lý", en: "Physics", icon: "⚡", color: "from-amber-500/10 to-orange-500/10 border-amber-200/50 dark:border-amber-900/30 text-amber-600 dark:text-amber-400" },
-  { code: "Hoá", vi: "Hóa học", en: "Chemistry", icon: "🧪", color: "from-emerald-500/10 to-teal-500/10 border-emerald-200/50 dark:border-emerald-900/30 text-emerald-600 dark:text-emerald-400" },
-  { code: "Anh", vi: "Tiếng Anh", en: "English", icon: "🇬🇧", color: "from-purple-500/10 to-fuchsia-500/10 border-purple-200/50 dark:border-purple-900/30 text-purple-600 dark:text-purple-400" },
-  { code: "Sinh", vi: "Sinh học", en: "Biology", icon: "🧬", color: "from-rose-500/10 to-pink-500/10 border-rose-200/50 dark:border-rose-900/30 text-rose-600 dark:text-rose-400" },
-  { code: "Khoa", vi: "Khoa học", en: "Natural Science", icon: "🌍", color: "from-cyan-500/10 to-sky-500/10 border-cyan-200/50 dark:border-cyan-900/30 text-cyan-600 dark:text-cyan-400" },
+  { id: "Toán", labelVi: "Toán học (Maths)", labelEn: "Mathematics" },
+  { id: "Lý", labelVi: "Vật lý (Physics)", labelEn: "Physics" },
+  { id: "Hoá", labelVi: "Hóa học (Chemistry)", labelEn: "Chemistry" },
+  { id: "Anh", labelVi: "Tiếng Anh (English)", labelEn: "English Language" },
+  { id: "Sinh", labelVi: "Sinh học (Biology)", labelEn: "Biology" },
+  { id: "Khoa học tự nhiên", labelVi: "Khoa học tự nhiên (Science)", labelEn: "Natural Sciences" }
 ];
 
 const GRADE_OPTIONS = [
@@ -38,152 +112,6 @@ const GRADE_OPTIONS = [
   { value: "12", labelVi: "Lớp 12 (THPT)", labelEn: "Grade 12 (High School)" },
 ];
 
-const LOCAL_FALLBACK_POOL: Record<string, Array<{ question: string, options: string[], correctAnswer: string, explanation: string }>> = {
-  "Toán": [
-    {
-      question: "Cho biểu thức A = x^2 - 4x + 4. Giá trị cực tiểu của biểu thức đạt được tại x bằng bao nhiêu?",
-      options: ["A. x = 0", "B. x = 1", "C. x = 2", "D. x = 4"],
-      correctAnswer: "C",
-      explanation: "Ta có A = (x - 2)^2. Vì (x - 2)^2 >= 0 với mọi x nên cực tiểu đạt được khi x - 2 = 0 <=> x = 2."
-    },
-    {
-      question: "Trong mặt phẳng Oxy, vectơ nào sau đây là vectơ pháp tuyến của đường thẳng d: 3x - 2y + 5 = 0?",
-      options: ["A. n = (3, 2)", "B. n = (3, -2)", "C. n = (-2, 3)", "D. n = (2, 3)"],
-      correctAnswer: "B",
-      explanation: "Đường thẳng ax + by + c = 0 có một vectơ pháp tuyến là n = (a, b). Với d: 3x - 2y + 5 = 0 thì n = (3, -2)."
-    },
-    {
-      question: "Tìm tập nghiệm S của phương trình bậc hai: x^2 - 5x + 6 = 0.",
-      options: ["A. S = {2; 3}", "B. S = {-2; -3}", "C. S = {1; 6}", "D. S = {-1; -6}"],
-      correctAnswer: "A",
-      explanation: "Phương trình phân tích thành (x - 2)(x - 3) = 0. Do đó nghiệm của phương trình là x = 2 hoặc x = 3."
-    }
-  ],
-  "Lý": [
-    {
-      question: "Đại lượng vật lý nào sau đây đặc trưng cho mức độ quán tính của một vật?",
-      options: ["A. Vận tốc", "B. Khối lượng", "C. Gia tốc", "D. Lực tác dụng"],
-      correctAnswer: "B",
-      explanation: "Khối lượng là đại lượng đặc trưng cho mức độ quán tính của vật; vật có khối lượng càng lớn thì quán tính càng lớn và khó đổi trạng thái chuyển động."
-    },
-    {
-      question: "Một vật chuyển động tròn đều với bán kính quỹ đạo r và tốc độ dài v. Gia tốc hướng tâm a của vật có công thức là gì?",
-      options: ["A. a = v / r", "B. a = v^2 / r", "C. a = v * r^2", "D. a = omega * r"],
-      correctAnswer: "B",
-      explanation: "Gia tốc hướng tâm của vật chuyển động tròn đều được tính bằng thương số giữa bình phương tốc độ dài và bán kính quỹ đạo: a = v^2 / r."
-    },
-    {
-      question: "Thế năng trọng trường của một vật khối lượng m ở độ cao h so với mốc thế năng được xác định bằng công thức nào? (g là gia tốc trọng trường)",
-      options: ["A. Wt = m * g * h", "B. Wt = 1/2 * m * v^2", "C. Wt = m * g / h", "D. Wt = g * h"],
-      correctAnswer: "A",
-      explanation: "Công thức cơ bản của thế năng trọng trường ở gần mặt đất có dạng Wt = m * g * h."
-    }
-  ],
-  "Hoá": [
-    {
-      question: "Trong bảng tuần hoàn hóa học, các nguyên tố thuộc nhóm IA (trừ hiđrô) được gọi là gì?",
-      options: ["A. Kim loại kiềm", "B. Kim loại kiềm thổ", "C. Nhóm Halogen", "D. Nhóm Khí hiếm"],
-      correctAnswer: "A",
-      explanation: "Nhóm IA (trừ hiđrô) gồm các nguyên tố kim loại kiềm có tính khử mạnh: Li, Na, K, Rb, Cs, Fr."
-    },
-    {
-      question: "Nguyên tố nào sau đây là phi kim hoạt động hóa học mạnh nhất trong bảng tuần hoàn?",
-      options: ["A. Clo (Cl)", "B. Oxi (O)", "C. Flo (F)", "D. Nitơ (N)"],
-      correctAnswer: "C",
-      explanation: "Flo (F) có độ âm điện lớn nhất trong bảng tuần hoàn, thể hiện tính phi kim phi thường và hoạt động hóa học mạnh nhất."
-    },
-    {
-      question: "Sản phẩm chính của phản ứng đốt nóng sắt (Fe) trong khí phi kim Clo dư là muối sắt có hóa trị mấy?",
-      options: ["A. Sắt(II) Clorua", "B. Sắt(III) Clorua", "C. Sắt từ oxit", "D. Sắt oxit"],
-      correctAnswer: "B",
-      explanation: "Khi sắt phản ứng trực tiếp với chất oxi hóa mạnh Clo ở nhiệt độ cao sẽ bị oxi hóa lên số oxi hóa cao nhất (+3), tạo thành Sắt(III) Clorua (FeCl3)."
-    }
-  ],
-  "Anh": [
-    {
-      question: "Choose the word whose underlined part is pronounced differently from the others: standard, father, cat, happy.",
-      options: ["A. standard", "B. father", "C. cat", "D. happy"],
-      correctAnswer: "B",
-      explanation: "The letter 'a' in 'father' is pronounced as long /a:/, whereas in 'standard', 'cat', and 'happy' it is pronounced as short /æ/."
-    },
-    {
-      question: "By the time the subject teacher arrived yesterday, the students _______ their learning assignments.",
-      options: ["A. finish", "B. finished", "C. have finished", "D. had finished"],
-      correctAnswer: "D",
-      explanation: "The past perfect tense ('had finished') is used to express an action that was completed before another reference action in the past."
-    },
-    {
-      question: "If I _______ in your position now, I would accept the admission to the university.",
-      options: ["A. am", "B. was", "C. were", "D. would be"],
-      correctAnswer: "C",
-      explanation: "This is a second conditional sentence describing an imaginary or hypothetical condition at present. We use 'were' for all subjects in the 'if' clause."
-    }
-  ],
-  "Sinh": [
-    {
-      question: "Bào quan nào trong tế bào nhân thực được ví như là 'nhà máy sản xuất năng lượng' (năng lượng ATP)?",
-      options: ["A. Nhân tế bào", "B. Ribôxôm", "C. Ti thể", "D. Lưới nội chất"],
-      correctAnswer: "C",
-      explanation: "Ti thể (mitochondria) là nơi diễn ra chu trình Krebs và chuỗi truyền êlectron, tổng hợp ra phần lớn năng lượng ATP cần thiết cho hoạt động tế bào."
-    },
-    {
-      question: "Quá trình chuyển hóa năng lượng ánh sáng thành năng lượng hóa học ở thực vật xanh xảy ra chủ yếu tại bào quan nào?",
-      options: ["A. Không bào", "B. Lục lạp", "C. Ti thể", "D. Bộ máy Golgi"],
-      correctAnswer: "B",
-      explanation: "Lục lạp chứa chất diệp lục hấp thụ năng lượng mặt trời để tham gia quá trình quang hợp sinh tổng hợp glucôzơ."
-    },
-    {
-      question: "Trong cấu trúc xoắn kép bổ sung của phân tử ADN, Adenin (A) luôn liên kết hyđrô bổ sung với nuclêôtit nào?",
-      options: ["A. Timin (T)", "B. Guanin (G)", "C. Xytôzin (X)", "D. Uraxin (U)"],
-      correctAnswer: "A",
-      explanation: "Theo nguyên tắc bổ sung trong phân tử ADN, bazơ nitơ loại Adenin (A) luôn ghép cặp bổ sung với Timin (T) qua đúng 2 mối liên kết hyđrô."
-    }
-  ],
-  "Khoa": [
-    {
-      question: "Hiện tượng nào sau đây biểu diễn một phản ứng biến đổi hóa học?",
-      options: ["A. Nước đá tan thành nước lỏng", "B. Đốt cháy một sợi dây sắt trong khí oxi", "C. Hòa tan đường tinh luyện vào nước ấm", "D. Nghiền thủy tinh thô thành bột mịn"],
-      correctAnswer: "B",
-      explanation: "Đốt sắt tạo thành một hợp chất mới chứa sắt oxit (Fe3O4) khác biệt hẳn tinh chất cơ bản (biến đổi hóa học). Các hiện tượng còn lại chỉ là biến đổi vật lý."
-    },
-    {
-      question: "Sóng âm truyền với tốc độ lớn nhất, nhanh nhất đi qua môi trường nào sau đây?",
-      options: ["A. Chất khí", "B. Chất lỏng", "C. Chất rắn", "D. Môi trường chân không"],
-      correctAnswer: "C",
-      explanation: "Mật độ vật chất hạt trong chất rắn dày đặc hơn, lực liên kết nguyên tử mạnh hơn giúp truyền dao động cơ học nhanh nhất."
-    },
-    {
-      question: "Dụng cụ chuẩn đo nào sau đây được lắp đặt trực tiếp dùng để đo cường độ dòng điện?",
-      options: ["A. Vôn kế", "B. Ampe kế", "C. Ôm kế", "D. Nhiệt kế"],
-      correctAnswer: "B",
-      explanation: "Ampe kế là dụng cụ đo chuyên dùng mắc nối tiếp vào sơ đồ để đo cường độ dòng điện chạy qua thiết bị điện."
-    }
-  ]
-};
-
-const getLocalFallbackQuiz = (subjects: string[]): QuizItem[] => {
-  return subjects.map((sub) => {
-    let key = "Toán";
-    const sLower = sub.toLowerCase();
-    if (sLower.includes("toán") || sLower.includes("math")) key = "Toán";
-    else if (sLower.includes("lý") || sLower.includes("physic") || sLower.includes("vật lý")) key = "Lý";
-    else if (sLower.includes("hoá") || sLower.includes("hóa") || sLower.includes("chem") || sLower.includes("hóa học")) key = "Hoá";
-    else if (sLower.includes("anh") || sLower.includes("english") || sLower.includes("tiếng anh")) key = "Anh";
-    else if (sLower.includes("sinh") || sLower.includes("biol") || sLower.includes("sinh học")) key = "Sinh";
-    else if (sLower.includes("khoa") || sLower.includes("scien") || sLower.includes("khoa học")) key = "Khoa";
-
-    const pool = LOCAL_FALLBACK_POOL[key] || LOCAL_FALLBACK_POOL["Toán"];
-    const randQ = pool[Math.floor(Math.random() * pool.length)];
-    return {
-      subject: sub,
-      question: randQ.question,
-      options: randQ.options,
-      correctAnswer: randQ.correctAnswer,
-      explanation: randQ.explanation
-    };
-  });
-};
-
 export default function DailyQuizTab({ currentUser, language, onRewardXp, onSaveQuizSubmission, onUpdateCurrentUser }: DailyQuizTabProps) {
   const t = translations[language];
   const [loading, setLoading] = useState(false);
@@ -192,155 +120,61 @@ export default function DailyQuizTab({ currentUser, language, onRewardXp, onSave
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [scores, setScores] = useState<Record<number, boolean>>({});
   const [errorMsg, setErrorMsg] = useState("");
+  
   // Picked subjects to send to the AI
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>(["Toán", "Lý", "Hoá"]);
+  const [selectedGrade, setSelectedGrade] = useState<string>("10");
   const [isConfiguringSubjects, setIsConfiguringSubjects] = useState(true);
-  const [selectedGrade, setSelectedGrade] = useState<string>(() => {
-    if (!currentUser?.grade) return "10";
-    const match = currentUser.grade.match(/\d+/);
-    return match ? match[0] : "10";
-  });
 
-  // Cooldown status tracking states
-  const [timeLeft, setTimeLeft] = useState(0);
-  const [isCooldownBlocked, setIsCooldownBlocked] = useState(false);
-  const [solvedCountToday, setSolvedCountToday] = useState(0);
-
-  const getLocalDateString = (date = new Date()) => {
-    const d = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-    return d.toISOString().split("T")[0];
+  // Check limits & cooldowns
+  const todayStr = new Date().toISOString().split("T")[0];
+  const userStats = currentUser.stats || {
+    xp: 0,
+    streak: 0,
+    solvedCountToday: 0,
+    lastActiveDate: "",
+    quizCooldownUntil: ""
   };
 
-  const submittingRef = useRef(false);
+  const solvedCountToday = userStats.lastActiveDate === todayStr ? (userStats.solvedCountToday || 0) : 0;
+  const isCooldownActive = userStats.quizCooldownUntil && new Date(userStats.quizCooldownUntil) > new Date();
+  const isDailyLimitReached = solvedCountToday >= 12;
 
-  // Check active cooldown status
-  const getCooldownStatus = () => {
-    if (!currentUser) return { isBlocked: false, timeLeftMs: 0, solvedCount: 0 };
-    if (currentUser.role === "dev") {
-      const todayStr = getLocalDateString();
-      const lastDate = currentUser.lastQuizSolvedDate || "";
-      const solvedCount = (lastDate && lastDate === todayStr) ? (currentUser.quizSolvedCountToday || 0) : 0;
-      return { isBlocked: false, timeLeftMs: 0, solvedCount };
+  const toggleSubject = (subId: string) => {
+    if (selectedSubjects.includes(subId)) {
+      if (selectedSubjects.length > 1) {
+        setSelectedSubjects(selectedSubjects.filter(s => s !== subId));
+      }
+    } else {
+      if (selectedSubjects.length < 3) {
+        setSelectedSubjects([...selectedSubjects, subId]);
+      } else {
+        // Shift first element out & add new
+        setSelectedSubjects([...selectedSubjects.slice(1), subId]);
+      }
     }
-
-    const now = Date.now();
-    const cooldownTime = currentUser.quizCooldownUntil ? new Date(currentUser.quizCooldownUntil).getTime() : 0;
-
-    // Check if cooldown timer is active
-    if (cooldownTime > now) {
-      return {
-        isBlocked: true,
-        timeLeftMs: cooldownTime - now,
-        solvedCount: currentUser.quizSolvedCountToday || 0
-      };
-    }
-
-    // Check if answered count today is 12 or more
-    const todayStr = getLocalDateString();
-    const lastDate = currentUser.lastQuizSolvedDate || "";
-    let solvedCount = currentUser.quizSolvedCountToday || 0;
-
-    if (lastDate && lastDate !== todayStr) {
-      solvedCount = 0; // reset on new day
-    }
-
-    if (solvedCount >= 12) {
-      return {
-        isBlocked: true,
-        timeLeftMs: 12 * 60 * 60 * 1000, // standard 12 hours fallback
-        solvedCount
-      };
-    }
-
-    return { isBlocked: false, timeLeftMs: 0, solvedCount };
   };
 
-  useEffect(() => {
-    const updateCooldown = () => {
-      const status = getCooldownStatus();
-      setIsCooldownBlocked(status.isBlocked);
-      setSolvedCountToday(status.solvedCount);
-      setTimeLeft(status.timeLeftMs);
-    };
-
-    updateCooldown();
-    const timer = setInterval(() => {
-      const status = getCooldownStatus();
-      setIsCooldownBlocked(status.isBlocked);
-      setSolvedCountToday(status.solvedCount);
-      setTimeLeft(status.timeLeftMs);
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [currentUser]);
-
-  const formatTimeLeft = (ms: number) => {
-    if (ms <= 0) return "00:00:00";
-    const totalSecs = Math.floor(ms / 1000);
-    const hrs = Math.floor(totalSecs / 3600);
-    const mins = Math.floor((totalSecs % 3600) / 60);
-    const secs = totalSecs % 60;
-
-    const pad = (num: number) => String(num).padStart(2, "0");
-    return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
-  };
-
-  const handleDevClearCooldown = () => {
-    if (!currentUser || !onUpdateCurrentUser) return;
-    const restoredUser: User = {
-      ...currentUser,
-      quizCooldownUntil: undefined,
-      quizSolvedCountToday: 0,
-      devCustomCooldownMs: undefined,
-    };
-    onUpdateCurrentUser(restoredUser);
-
-    setQuizzes([]);
-    setSelectedAnswers({});
-    setIsSubmitted(false);
-    setScores({});
-    setIsConfiguringSubjects(true);
-
-    window.showToast?.(
-      language === "vi" 
-        ? "Đã dỡ bỏ cài đặt thời gian chờ cooldown thành công!" 
-        : "Successfully cleared quiz cooldown duration!",
-      "success"
-    );
-  };
-
-  // Fetch quizzes using exact selected subjects list
-  const fetchQuizzes = async (subjectsToGenerate: string[]) => {
-    if (isCooldownBlocked) {
-      window.showToast?.(
-        language === "vi" ? "Bạn đang trong thời gian chờ (cooldown). Không thể tải đề lúc này!" : "You are currently in cooldown. Cannot generate quiz now!",
-        "role_alert"
-      );
-      return;
-    }
-    if (subjectsToGenerate.length !== 3) {
-      window.showToast?.(
-        language === "vi" 
-          ? "Vui lòng chọn đúng chính xác 3 môn học!" 
-          : "Please select exactly 3 subjects!",
-        "role_alert"
-      );
-      return;
-    }
+  const fetchQuizzes = async () => {
     setLoading(true);
     setErrorMsg("");
+    setQuizzes([]);
+
+    const subjectsToGenerate = selectedSubjects.length > 0 ? selectedSubjects : ["Toán", "Lý", "Hoá"];
+
     try {
-      const customKey = localStorage.getItem("gemini_api_key") || "";
+      // Pass the user's custom key securely if they pasted one
+      const userKey = localStorage.getItem("gemini_user_api_key") || "";
       const res = await fetch("/api/generate-quiz", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-gemini-key": customKey
+          "x-gemini-key": userKey
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           subjects: subjectsToGenerate,
           grade: selectedGrade
-        }),
+        })
       });
 
       let data;
@@ -355,565 +189,554 @@ export default function DailyQuizTab({ currentUser, language, onRewardXp, onSave
         setScores({});
         setIsConfiguringSubjects(false);
       } else {
-        // Fallback to beautiful curriculum questions offline
-        const localQuiz = getLocalFallbackQuiz(subjectsToGenerate);
-        setQuizzes(localQuiz);
-        setSelectedAnswers({});
-        setIsSubmitted(false);
-        setScores({});
-        setIsConfiguringSubjects(false);
-
-        window.showToast?.(
-          language === "vi"
-            ? "Đang sử dụng câu hỏi ôn tập chất lượng cao có sẵn (Chế độ dự phòng offline do AI bận hoặc hết lượt)."
-            : "Using high-quality offline curriculum questions (Network fallback mode activated).",
-          "info"
-        );
+        const errorText = data?.error || (language === "vi" ? "Đường truyền AI bận hoặc lỗi tạo đề thi. Vui lòng thử lại sau!" : "Gemini is busy or quiz generation failed. Please try again later!");
+        setErrorMsg(errorText);
+        window.showToast?.(errorText, "role_alert");
       }
     } catch (err) {
-      console.warn("API Endpoint fetch failed. Falling back to robust local offline questions pool:", err);
-      // Fallback offline questions
-      const localQuiz = getLocalFallbackQuiz(subjectsToGenerate);
-      setQuizzes(localQuiz);
-      setSelectedAnswers({});
-      setIsSubmitted(false);
-      setScores({});
-      setIsConfiguringSubjects(false);
-
-      window.showToast?.(
-        language === "vi"
-          ? "Đang sử dụng câu hỏi ôn tập chất lượng cao có sẵn (Chế độ dự phòng offline do AI bận hoặc hết lượt)."
-          : "Using high-quality offline curriculum questions (Network fallback mode activated).",
-        "info"
-      );
+      console.warn("API Endpoint fetch failed:", err);
+      const errorText = language === "vi" 
+        ? "Kết nối máy chủ thất bại. Không thể tải bộ câu hỏi tự động." 
+        : "Server connection failed. Unable to fetch automated quiz.";
+      setErrorMsg(errorText);
+      window.showToast?.(errorText, "role_alert");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleToggleSubject = (code: string) => {
-    if (selectedSubjects.includes(code)) {
-      setSelectedSubjects((prev) => prev.filter((s) => s !== code));
-    } else {
-      if (selectedSubjects.length < 3) {
-        setSelectedSubjects((prev) => [...prev, code]);
-      } else {
-        window.showToast?.(
-          language === "vi" 
-            ? "Bạn đã chọn đủ 3 môn học, vui lòng bỏ bớt môn trước khi thay thế!" 
-            : "You have selected 3 subjects, uncheck one first to replace!",
-          "role_alert"
-        );
+  const handleBypassCooldown = () => {
+    onUpdateCurrentUser({
+      stats: {
+        ...userStats,
+        quizCooldownUntil: "",
+        solvedCountToday: 0
       }
-    }
+    });
+    window.showToast?.(
+      language === "vi" ? "Đã đặt lại bộ bấm giờ chờ học tập thành công!" : "Successfully reset learning wait timers!", 
+      "success"
+    );
   };
 
-  const handleSelectAnswer = (idx: number, optChar: string) => {
-    if (isSubmitted || isCooldownBlocked) return;
-    setSelectedAnswers((prev) => ({
-      ...prev,
-      [idx]: optChar,
-    }));
+  const handleOptionSelect = (qIdx: number, ansChar: string) => {
+    if (isSubmitted) return;
+    setSelectedAnswers({
+      ...selectedAnswers,
+      [qIdx]: ansChar
+    });
   };
 
   const handleSubmitQuiz = () => {
-    if (isSubmitted || isCooldownBlocked || submittingRef.current) return;
-    submittingRef.current = true;
-    // Check if three questions answered
-    if (Object.keys(selectedAnswers).length < quizzes.length) {
+    if (quizzes.length === 0 || isSubmitted) return;
+
+    // Must answer all
+    const keysUnanswered = quizzes.map((_, idx) => idx).filter(idx => !selectedAnswers[idx]);
+    if (keysUnanswered.length > 0) {
       window.showToast?.(
-        language === "vi" ? "Vui lòng chọn đầy đủ đáp án cho tất cả câu hỏi!" : "Please provide answers to all questions!",
-        "role_alert"
+        language === "vi" 
+          ? `Bạn chưa hoàn thành tất cả các câu hỏi (${3 - keysUnanswered.length}/3)!` 
+          : `Please fill in all options before grading (${3 - keysUnanswered.length}/3)!`,
+        "info"
       );
       return;
     }
 
+    const calculatedScores: Record<number, boolean> = {};
     let correctCount = 0;
-    const itemScores: Record<number, boolean> = {};
 
     quizzes.forEach((q, idx) => {
-      const isCorrect = selectedAnswers[idx] === q.correctAnswer;
-      itemScores[idx] = isCorrect;
+      const userAns = selectedAnswers[idx] || "";
+      const isCorrect = userAns.toUpperCase().trim().startsWith(q.correctAnswer.toUpperCase().trim());
+      calculatedScores[idx] = isCorrect;
       if (isCorrect) {
         correctCount++;
       }
     });
 
-    setScores(itemScores);
+    setScores(calculatedScores);
     setIsSubmitted(true);
 
-    const rewards = correctCount * 20;
+    // Give points rewards
+    const pointsPerQuestion = 15;
+    const gainedXp = correctCount * pointsPerQuestion;
+    const bonusXp = correctCount === quizzes.length ? 15 : 0; // All right bonus
+    const totalAwardXp = gainedXp + bonusXp;
 
-    if (onSaveQuizSubmission) {
-      const answersList: AnswerSubmission[] = quizzes.map((q, idx) => {
-        const studentAns = selectedAnswers[idx] || "";
-        const isCorrect = studentAns === q.correctAnswer;
-        return {
-          questionId: `daily_q_${idx}_${Date.now()}`,
-          studentAnswer: studentAns,
-          isCorrect,
-          score: isCorrect ? 20 : 0,
-          gradedByTeacher: true
-        };
-      });
-      onSaveQuizSubmission(answersList, rewards);
-    } else {
-      if (rewards > 0) {
-        onRewardXp(rewards);
+    if (totalAwardXp > 0) {
+      onRewardXp(
+        totalAwardXp,
+        `Hoàn thành thử thách AI (${correctCount}/${quizzes.length} câu đúng)${bonusXp > 0 ? " + Thưởng Tuyệt Đối" : ""}`,
+        `Completed AI Quiz challenge (${correctCount}/${quizzes.length} correct answers)${bonusXp > 0 ? " + Perfect Run Bonus" : ""}`
+      );
+    }
+
+    // Set a dynamic learning cooldown of 3 minutes for pedagogical health
+    const fiveMinutesLater = new Date(Date.now() + 3 * 60 * 1000).toISOString();
+    
+    onUpdateCurrentUser({
+      stats: {
+        ...userStats,
+        solvedCountToday: solvedCountToday + quizzes.length,
+        lastActiveDate: todayStr,
+        quizCooldownUntil: fiveMinutesLater
       }
-    }
+    });
 
-    if (rewards > 0) {
-      window.showToast?.(
-        language === "vi"
-          ? `Bạn đã đạt được ${correctCount}/${quizzes.length} câu trả lời đúng và nhận +${rewards} XP!`
-          : `You got ${correctCount}/${quizzes.length} correct answers and earned +${rewards} XP!`,
-        "success"
-      );
-    } else {
-      window.showToast?.(
-        language === "vi"
-          ? `Bạn chưa có câu trả lời đúng nào hôm nay. Hãy tiếp tục luyện tập nhé!`
-          : `No correct answers today. Keep practicing!`,
-        "info"
-      );
-    }
+    onSaveQuizSubmission({
+      date: new Date().toISOString(),
+      score: correctCount,
+      total: quizzes.length,
+      subjects: selectedSubjects,
+      grade: selectedGrade,
+      xpEarned: totalAwardXp
+    });
+
+    window.showToast?.(
+      language === "vi"
+        ? `Kết quả: Đúng được ${correctCount}/${quizzes.length} câu học tập!`
+        : `Graded: You got ${correctCount}/${quizzes.length} challenges accurate!`,
+      correctCount >= 2 ? "success" : "info"
+    );
   };
 
-  const startNewGenerationFlow = () => {
-    if (isCooldownBlocked) {
-      window.showToast?.(
-        language === "vi" ? "Bạn đang trong thời gian chờ (cooldown). Không thể tải đề lúc này!" : "You are currently in cooldown. Cannot generate quiz now!",
-        "role_alert"
-      );
-      return;
-    }
-    if (selectedSubjects.length !== 3) {
-      window.showToast?.(
-        language === "vi" ? "Bạn cần chọn chính xác 3 môn học!" : "You must select exactly 3 subjects!",
-        "role_alert"
-      );
-      return;
-    }
-    fetchQuizzes(selectedSubjects);
+  const resetChallengeFlow = () => {
+    setQuizzes([]);
+    setSelectedAnswers({});
+    setIsSubmitted(false);
+    setScores({});
+    setIsConfiguringSubjects(true);
+    setErrorMsg("");
   };
 
-  if (isCooldownBlocked) {
-    return (
-      <div className="max-w-md mx-auto p-8 bg-white dark:bg-neutral-900 border border-neutral-150 dark:border-neutral-800 rounded-3xl shadow-xl text-center space-y-6 animate-scaleUp" id="quiz-cooldown-panel">
-        {/* Lock or Shield Icon with Pulse Halo */}
-        <div className="relative w-24 h-24 mx-auto flex items-center justify-center bg-amber-500/10 rounded-full border border-amber-500/30">
-          <Clock className="w-12 h-12 text-amber-500 animate-pulse" />
-          <div className="absolute inset-0 rounded-full border-2 border-dashed border-amber-500/40 animate-spin [animation-duration:15s]" />
-        </div>
-
-        <div className="space-y-2">
-          <h2 className="text-2xl font-black tracking-tight text-neutral-900 dark:text-neutral-100">
-            {language === "vi" ? "Thời gian chờ thử thách" : "AI Quiz Cooldown Active"}
+  return (
+    <div className="space-y-6 max-w-4xl mx-auto p-2" id="ai-quiz-view-container">
+      {/* Upper Brand Badge */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-6 rounded-2xl shadow-sm">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-0.5 text-[10px] uppercase font-mono tracking-widest bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/35 rounded-full font-bold flex items-center gap-1">
+              <Sparkles className="w-3 h-3" /> AI Proctored
+            </span>
+            {currentUser.role === "developer" && (
+              <span className="px-2 py-0.5 text-[9px] font-mono uppercase bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400 rounded-full font-bold">
+                Dev Bypass Active
+              </span>
+            )}
+          </div>
+          <h2 className="text-xl font-extrabold tracking-tight text-neutral-950 dark:text-neutral-50 flex items-center gap-2">
+            <Layers className="w-5.5 h-5.5 text-indigo-500" /> {t.title}
           </h2>
-          <p className="text-xs text-neutral-400 max-w-sm mx-auto leading-relaxed">
-            {language === "vi"
-              ? "Bạn đã hoàn thành giới hạn tối đa 12 câu hỏi hằng ngày. Vui lòng nghỉ ngơi mười hai giờ trước khi bắt đầu bài kiểm tra AI tiếp theo!"
-              : "You have completed the maximum limit of 12 daily challenge questions. Take a rest for twelve hours before your next AI test!"}
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 max-w-xl">
+            {t.subtitle}
           </p>
         </div>
 
-        {/* Big Monospace Digital Countdown clock */}
-        <div className="p-5 bg-neutral-50 dark:bg-neutral-950/70 border border-neutral-100 dark:border-neutral-950 rounded-2xl">
-          <p className="text-[10px] font-mono font-black tracking-widest text-neutral-450 uppercase mb-1">
-            {language === "vi" ? "THỜI GIAN CHỜ CÒN LẠI:" : "TIME REMAINING:"}
-          </p>
-          <div className="text-4xl font-black font-mono text-amber-500 tracking-widest leading-none drop-shadow-sm select-all">
-            {formatTimeLeft(timeLeft)}
+        {/* Cooldown/Reset Shortcuts */}
+        <div className="flex flex-wrap gap-2 items-center">
+          {currentUser.role === "developer" && (
+            <button
+              onClick={handleBypassCooldown}
+              id="dev-bypass-cooldown-btn"
+              className="px-3 py-1.5 text-xs font-mono font-bold bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-lg flex items-center gap-1.5 border border-dashed border-neutral-300 dark:border-neutral-700"
+            >
+              <RefreshCw className="w-3.5 h-3.5" /> {t.bypassCooldown}
+            </button>
+          )}
+
+          {/* Today stats */}
+          <div className="px-3.5 py-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700 text-xs font-mono flex items-center gap-2">
+            <Flame className="w-4 h-4 text-orange-500" />
+            <span>
+              {language === "vi" ? `Đã làm: ${solvedCountToday}/12 câu hằng ngày` : `Solved Today: ${solvedCountToday}/12`}
+            </span>
           </div>
         </div>
+      </div>
 
-        {/* Progress bar visualizer */}
-        <div className="space-y-1 text-left">
-          <div className="flex justify-between text-[11px] font-bold text-neutral-400">
-            <span>{language === "vi" ? "Tiến độ ngày hôm nay" : "Today's Limit Progress"}</span>
-            <span className="text-amber-500 font-mono">12/12 {language === "vi" ? "câu" : "Qs"} (100%)</span>
-          </div>
-          <div className="w-full h-2.5 bg-neutral-100 dark:bg-neutral-950 rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full" style={{ width: "100%" }} />
-          </div>
-        </div>
-
-        {/* Developer Admin panel controls */}
-        {currentUser?.role === "dev" && (
-          <div className="pt-4 border-t border-dashed border-neutral-150 dark:border-neutral-800 space-y-3">
-            <div className="p-3 bg-cyan-500/10 rounded-xl border border-cyan-500/20 text-xs text-cyan-600 dark:text-cyan-400 leading-relaxed font-mono text-left space-y-1">
-              <span className="font-extrabold block text-[10px] tracking-wider text-cyan-500 uppercase">⚡ DEV COMPONENT HUB</span>
-              <p>Count Today: {solvedCountToday}/12 questions</p>
-              <p>Cooldown Type: {currentUser.devCustomCooldownMs ? `${currentUser.devCustomCooldownMs / 1000}s` : "Default 12h"}</p>
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={handleDevClearCooldown}
-                className="flex-1 py-3 px-4 bg-cyan-600 hover:bg-cyan-500 select-none text-white text-xs font-black rounded-xl transition shadow cursor-pointer uppercase tracking-wider"
+      {/* Main Error Message if any */}
+      {errorMsg && (
+        <div className="p-4 bg-red-50 dark:bg-red-950/25 border border-red-100 dark:border-red-900/40 rounded-xl text-xs text-red-600 dark:text-red-400 flex items-start gap-2.5 animate-fadeIn">
+          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+          <div className="space-y-1">
+            <span className="font-bold">{language === "vi" ? "Lỗi truy cập AI:" : "AI Service Alert:"}</span>
+            <p className="font-medium text-neutral-700 dark:text-neutral-300">{errorMsg}</p>
+            <p className="text-[10px] text-red-500/80 mt-1">
+              {language === "vi" 
+                ? "💡 Gợi ý: Hãy nhấp vào Thử chọn lại môn học hoặc dán khóa Gemini API Key của riêng bạn trong tab Cài đặt để hoạt động 24/7."
+                : "💡 Advice: Click back to select other topics, or paste your personal Gemini API Key in Settings to restore realtime generation directly."}
+            </p>
+            <div className="pt-2">
+              <button 
+                onClick={resetChallengeFlow}
+                className="px-2.5 py-1 bg-red-600 text-white rounded text-[10px] hover:bg-red-700 font-bold transition-all"
               >
-                🔓 {language === "vi" ? "Bỏ qua chờ (Dev)" : "Bypass Cooldown"}
+                {language === "vi" ? "Quay lại chọn môn học" : "Choose Subjects Again"}
               </button>
             </div>
           </div>
-        )}
-      </div>
-    );
-  }
+        </div>
+      )}
 
-  return (
-    <div className="max-w-3xl mx-auto space-y-6 animate-fadeIn" id="daily-quiz-container">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white p-6 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 rounded-full text-xs font-semibold uppercase tracking-wider">
-            <Zap className="w-4 h-4 text-yellow-300 fill-current" />
-            Daily Challenge
+      {/* 1. Limits Checked: Cooldown Timer */}
+      {!isDailyLimitReached && isCooldownActive && currentUser.role !== "developer" && (
+        <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-2xl p-8 text-center space-y-4 max-w-xl mx-auto shadow-sm animate-fadeIn" id="cooldown-active-notif">
+          <div className="w-14 h-14 bg-amber-100 dark:bg-amber-900/40 rounded-full flex items-center justify-center mx-auto">
+            <Calendar className="w-7 h-7 text-amber-600 dark:text-amber-400 animate-pulse" />
           </div>
-          <h2 className="text-2xl font-black tracking-tight">{t.aiQuizTitle}</h2>
-          <p className="text-xs text-amber-100">
-            {language === "vi" 
-              ? "Tự do chọn 3 môn học bất kỳ để AI tạo đề thi thông thái và nhận đến 240 XP mỗi ngày!" 
-              : "Choose any 3 custom subjects to challenge your mind and earn up to 240 XP daily!"}
-          </p>
-
-          {/* Today's solved progress with indicator bar */}
-          <div className="pt-2 flex flex-col sm:flex-row sm:items-center gap-2">
-            <span className="text-[11px] font-bold bg-white/20 px-2.5 py-1 rounded-md text-amber-50">
-              {language === "vi" 
-                ? `Đạt được: ${solvedCountToday}/12 câu hỏi trong ngày` 
-                : `Completed: ${solvedCountToday}/12 questions today`}
-            </span>
-            <div className="w-full sm:w-32 h-2.5 bg-white/10 rounded-full overflow-hidden border border-white/5">
-              <div 
-                className="h-full bg-gradient-to-r from-yellow-300 to-amber-300 transition-all duration-300 rounded-full" 
-                style={{ width: `${Math.min(100, (solvedCountToday / 12) * 100)}%` }}
-              />
+          <div className="space-y-2">
+            <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-100">
+              {t.cooldownTitle}
+            </h3>
+            <p className="text-xs text-neutral-600 dark:text-neutral-400 max-w-md mx-auto">
+              {t.cooldownDesc} (Học tập thông minh đòi hỏi các khoảng giãn nghỉ lý tưởng từ 2-3 phút giữa mỗi bài thi để củng cố trí nhớ dài hạn).
+            </p>
+          </div>
+          <div className="pt-2">
+            <div className="inline-block p-1 bg-neutral-200/50 dark:bg-neutral-800 px-4 py-2 rounded-xl font-mono text-xs font-bold text-amber-600">
+              {t.timeRemaining}: <b>{Math.ceil((new Date(userStats.quizCooldownUntil).getTime() - Date.now()) / 1000)}s</b>
             </div>
+          </div>
+          <p className="text-[10px] text-neutral-400">
+            {language === "vi" ? "Mẹo: Bạn có thể chọn học lý thuyết hoặc tra cứu các tab khác trong lúc chờ." : "Tip: Practice reading textbook core materials or track classes while waiting."}
+          </p>
+        </div>
+      )}
+
+      {/* 2. Limits Checked: Daily Allowances */}
+      {isDailyLimitReached && currentUser.role !== "developer" && (
+        <div className="bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-8 text-center space-y-4 max-w-xl mx-auto shadow-sm animate-fadeIn" id="daily-quota-reached-notif">
+          <div className="w-14 h-14 bg-indigo-50 dark:bg-indigo-950 rounded-full flex items-center justify-center mx-auto">
+            <Award className="w-7 h-7 text-indigo-600 dark:text-indigo-400 animate-bounce" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-lg font-extrabold text-indigo-600 dark:text-indigo-400">
+              {t.dailyLimitReached}
+            </h3>
+            <p className="text-xs text-neutral-600 dark:text-neutral-400 max-w-md mx-auto">
+              {t.limitDesc} Thói quen học chăm chỉ mỗi ngày (Daily Streaks) hiệu quả gấp nhiều lần việc dốc hết sức trong một buổi tối duy nhất.
+            </p>
+          </div>
+          <div className="font-mono text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/20 p-2.5 rounded-lg inline-block">
+            {language === "vi" ? "Khôi phục lượt làm bài AI sau: 24h" : "Refresing in: 24h"}
           </div>
         </div>
+      )}
 
-        <button
-          onClick={() => setIsConfiguringSubjects(true)}
-          disabled={loading}
-          className="self-start md:self-auto px-5 py-2.5 bg-white text-orange-600 hover:bg-neutral-50 font-bold rounded-xl text-sm transition shadow-sm cursor-pointer disabled:opacity-50 select-none"
-        >
-          {language === "vi" ? "⚙️ Chọn lại 3 môn" : "⚙️ Select 3 subjects"}
-        </button>
-      </div>
-
-      {/* Dynamic Subjects Setup Area */}
-      {isConfiguringSubjects && (
-        <div className="bg-white dark:bg-neutral-900 border-2 border-dashed border-orange-300 dark:border-orange-950 rounded-2xl p-6 space-y-5 animate-scaleUp">
-          <div className="flex items-center gap-2.5">
-            <GraduationCap className="w-6 h-6 text-orange-500" />
-            <div>
-              <h3 className="font-extrabold text-neutral-900 dark:text-neutral-100">
-                {language === "vi" ? "Tốt nhất từ AI - Tạo đề bài của riêng bạn" : "AI Tailored STEM Quiz Generator"}
+      {/* 3. Setup Configured Board */}
+      {isConfiguringSubjects && (!isCooldownActive || isDailyLimitReached || currentUser.role === "developer") && (
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 shadow-sm space-y-6 animate-fadeIn" id="subject-selector-board">
+          
+          <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-neutral-100 dark:border-neutral-800 pb-4 gap-4">
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-50 flex items-center gap-1.5">
+                <BookOpen className="w-4.5 h-4.5 text-neutral-500" />
+                {t.selectSubjects}
               </h3>
               <p className="text-xs text-neutral-400">
-                {language === "vi" ? "Chọn lớp học và tổ hợp 3 môn học thử thách để AI Gemini tạo câu hỏi phù hợp." : "Select your grade and combination of 3 subjects to initiate the personalized AI-generated challenge."}
+                {language === "vi" ? "Chọn đúng tối đa và tối thiểu 3 môn học để AI xây dựng lộ trình" : "Personalize combinations for multiple topics based on curriculum."}
               </p>
             </div>
-          </div>
 
-          {/* Step 1: Selection of Grade Level */}
-          <div className="space-y-4 p-5 bg-gradient-to-br from-orange-500/5 to-amber-500/5 dark:from-orange-950/5 dark:to-amber-950/5 rounded-2xl border border-orange-100 dark:border-orange-950/45 shadow-sm">
-            <div className="flex items-center gap-2">
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-[10px] font-extrabold text-white">1</span>
-              <label className="block text-[11px] font-black uppercase text-orange-600 dark:text-orange-400 tracking-wider">
-                {language === "vi" ? "Chọn cấp lớp của bạn" : "Choose Your Grade Level"}
-              </label>
+            {/* Grade Selection */}
+            <div className="flex items-center gap-2.5">
+              <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-400">
+                {t.gradeLabel}
+              </span>
+              <select
+                id="grade-select-box"
+                value={selectedGrade}
+                onChange={(e) => setSelectedGrade(e.target.value)}
+                className="bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs font-bold px-3 py-1.5 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-indigo-500"
+              >
+                {GRADE_OPTIONS.map((g) => (
+                  <option key={g.value} value={g.value}>
+                    {language === "vi" ? g.labelVi : g.labelEn}
+                  </option>
+                ))}
+              </select>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* THCS */}
-              <div className="space-y-2.5 p-3.5 bg-neutral-50 dark:bg-neutral-900/40 rounded-xl border border-neutral-150 dark:border-neutral-800/80">
-                <span className="text-[10px] font-black uppercase tracking-widest text-neutral-450 dark:text-neutral-500 block">
-                  {language === "vi" ? "🏫 Trung học Cơ sở (THCS)" : "🏫 Junior Secondary (Grades 6-9)"}
-                </span>
-                <div className="grid grid-cols-4 gap-2">
-                  {GRADE_OPTIONS.filter(g => parseInt(g.value) <= 9).map((g) => {
-                    const isSelected = selectedGrade === g.value;
-                    return (
-                      <button
-                        key={g.value}
-                        type="button"
-                        onClick={() => setSelectedGrade(g.value)}
-                        className={`py-2.5 px-1 rounded-xl text-center transition-all duration-200 cursor-pointer select-none flex flex-col justify-center items-center gap-0.5 border ${
-                          isSelected
-                            ? "border-orange-500 bg-orange-500 text-white shadow-md shadow-orange-500/20 font-black scale-[1.03]"
-                            : "border-neutral-200 dark:border-neutral-800 hover:border-orange-300 dark:hover:border-orange-900/60 hover:bg-orange-500/5 dark:hover:bg-orange-950/10 bg-white dark:bg-neutral-950 text-neutral-700 dark:text-neutral-300"
-                        }`}
-                      >
-                        <span className="text-sm font-extrabold leading-none">{g.value}</span>
-                        <span className={`text-[8px] font-bold tracking-tight ${isSelected ? "text-orange-100" : "text-neutral-400 dark:text-neutral-500"}`}>
-                          {language === "vi" ? "Lớp" : "Grade"}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* THPT */}
-              <div className="space-y-2.5 p-3.5 bg-neutral-50 dark:bg-neutral-900/40 rounded-xl border border-neutral-150 dark:border-neutral-800/80">
-                <span className="text-[10px] font-black uppercase tracking-widest text-neutral-450 dark:text-neutral-500 block">
-                  {language === "vi" ? "🎓 Trung học Phổ thông (THPT)" : "🎓 Senior High (Grades 10-12)"}
-                </span>
-                <div className="grid grid-cols-3 gap-2">
-                  {GRADE_OPTIONS.filter(g => parseInt(g.value) >= 10).map((g) => {
-                    const isSelected = selectedGrade === g.value;
-                    return (
-                      <button
-                        key={g.value}
-                        type="button"
-                        onClick={() => setSelectedGrade(g.value)}
-                        className={`py-2.5 px-1 rounded-xl text-center transition-all duration-200 cursor-pointer select-none flex flex-col justify-center items-center gap-0.5 border ${
-                          isSelected
-                            ? "border-orange-500 bg-orange-500 text-white shadow-md shadow-orange-500/20 font-black scale-[1.03]"
-                            : "border-neutral-200 dark:border-neutral-800 hover:border-orange-300 dark:hover:border-orange-900/60 hover:bg-orange-500/5 dark:hover:bg-orange-950/10 bg-white dark:bg-neutral-950 text-neutral-700 dark:text-neutral-300"
-                        }`}
-                      >
-                        <span className="text-sm font-extrabold leading-none">{g.value}</span>
-                        <span className={`text-[8px] font-bold tracking-tight ${isSelected ? "text-orange-100" : "text-neutral-400 dark:text-neutral-500"}`}>
-                          {language === "vi" ? "Lớp" : "Grade"}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            <p className="text-[10px] text-neutral-450 dark:text-neutral-500 italic leading-snug">
-              {language === "vi" 
-                ? "💡 AI Gemini 3.5 sẽ tự động điều chỉnh kiến thức, công thức và mức độ khó phù hợp với nội dung của chương trình lớp " + selectedGrade + " hiện hành."
-                : "💡 AI Gemini 3.5 will customize facts, formula scopes, and cognitive depth specifically to correspond to Grade " + selectedGrade + " curricula."}
-            </p>
           </div>
 
-          {/* Step 2 Header */}
-          <div className="space-y-1 pt-1">
-            <label className="block text-[11px] font-black uppercase text-orange-600 dark:text-orange-400 tracking-wider">
-              {language === "vi" ? "Bước 2: Chọn tổ hợp chính xác 3 môn học" : "Step 2: Check Exactly 3 Study Categories"}
-            </label>
-            <p className="text-[11px] text-neutral-450">
-              {language === "vi" ? "Xây dựng tổ hợp riêng biệt để thử sức nhận 240 XP hôm nay:" : "Build your custom focus subject combination to seek +240 XP today:"}
-            </p>
-          </div>
-
+          {/* Subjects Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {SUBJECT_POOL.map((subj) => {
-              const isSelected = selectedSubjects.includes(subj.code);
+            {SUBJECT_POOL.map((item) => {
+              const selected = selectedSubjects.includes(item.id);
               return (
                 <button
-                  key={subj.code}
-                  type="button"
-                  onClick={() => handleToggleSubject(subj.code)}
-                  className={`p-4 rounded-xl border-2 text-left transition relative cursor-pointer flex flex-col justify-between h-28 ${
-                    isSelected
-                      ? "border-orange-500 bg-orange-50/45 dark:bg-orange-950/20 shadow-sm"
-                      : "border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950/20 hover:bg-neutral-100 dark:hover:bg-neutral-900"
+                  key={item.id}
+                  onClick={() => toggleSubject(item.id)}
+                  id={`subject-tag-${item.id}`}
+                  className={`flex flex-col gap-2 p-4 text-left rounded-xl border transition-all relative overflow-hidden group hover:scale-[1.01] ${
+                    selected
+                      ? "bg-indigo-50/70 border-indigo-400 dark:bg-indigo-950/25 dark:border-indigo-600/80 text-indigo-950 dark:text-indigo-100 ring-2 ring-indigo-100 dark:ring-indigo-900/20"
+                      : "bg-neutral-50 border-neutral-200 dark:bg-neutral-800/55 dark:border-neutral-800 text-neutral-700 dark:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-700"
                   }`}
                 >
                   <div className="flex items-center justify-between w-full">
-                    <span className="text-2xl">{subj.icon}</span>
-                    <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center font-bold text-[10px] ${
-                      isSelected 
-                        ? "border-orange-500 bg-orange-500 text-white" 
-                        : "border-neutral-300 dark:border-neutral-600"
+                    <span className="text-xs font-bold block">
+                      {language === "vi" ? item.labelVi : item.labelEn}
+                    </span>
+                    <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] ${
+                      selected ? "bg-indigo-500 text-white" : "border border-neutral-300 dark:border-neutral-700"
                     }`}>
-                      {isSelected ? "✓" : ""}
+                      {selected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                     </span>
                   </div>
-                  <div>
-                    <p className="font-black text-xs text-neutral-800 dark:text-neutral-200">
-                      {language === "vi" ? subj.vi : subj.en}
-                    </p>
-                    <p className="text-[10px] text-neutral-400 uppercase tracking-widest font-mono font-bold mt-0.5">
-                      {subj.code}
-                    </p>
-                  </div>
+
+                  {/* Subtitle */}
+                  <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono">
+                    {selected ? "In Selection" : "Click to select"}
+                  </span>
                 </button>
               );
             })}
           </div>
 
-          <div className="flex items-center justify-between pt-3 border-t border-neutral-100 dark:border-neutral-800">
-            <span className="text-xs font-mono font-medium text-neutral-400">
-              {language === "vi" 
-                ? `Đang chọn: ${selectedSubjects.length}/3 môn học` 
-                : `Selected: ${selectedSubjects.length}/3 subjects`}
-            </span>
+          <div className="bg-neutral-50 dark:bg-neutral-800/30 p-4 rounded-xl border border-neutral-150 dark:border-neutral-850/40 text-xs flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-950 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+              <Sparkles className="w-4 h-4 animate-pulse" />
+            </div>
+            <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
+              {language === "vi"
+                ? `Độ khó của đề thi sẽ tự động bám sát chương trình Giáo Dục Phổ Thông mới đối với ${
+                    selectedGrade === "10" || selectedGrade === "11" || selectedGrade === "12" ? "THPT" : "THCS"
+                  } Lớp ${selectedGrade}.`
+                : `Exam criteria dynamically scales according to Vietnamese national core standards for Grade ${selectedGrade}.`}
+            </p>
+          </div>
+
+          {/* Generate Button Trigger */}
+          <div className="pt-2 text-center">
             <button
-              onClick={startNewGenerationFlow}
-              disabled={loading || selectedSubjects.length !== 3}
-              className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-xs tracking-wider uppercase rounded-xl transition shadow-md cursor-pointer disabled:opacity-50 select-none"
+              onClick={fetchQuizzes}
+              disabled={loading}
+              id="generate-realtime-quiz-btn"
+              className="w-full sm:w-auto px-8 py-3 bg-neutral-900 hover:bg-neutral-850 dark:bg-indigo-600 dark:hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 mx-auto"
             >
-              {loading ? (language === "vi" ? "Đang khởi tạo đề..." : "Generating quiz...") : (language === "vi" ? "BẮT ĐẦU TẠO ĐỀ AI 🚀" : "START AI GENERATION 🚀")}
+              {loading ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                  {t.generating}
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 animate-pulse text-indigo-400 dark:text-indigo-100" />
+                  {t.generateBtn}
+                </>
+              )}
             </button>
           </div>
         </div>
       )}
 
-      {loading ? (
-        <div className="text-center py-20 bg-white dark:bg-neutral-900 border border-neutral-150 dark:border-neutral-800 rounded-2xl shadow-sm">
-          <div className="animate-spin rounded-full h-10 w-10 border-4 border-orange-500 border-t-transparent mx-auto mb-4" />
-          <p className="text-sm text-neutral-500 font-bold">{language === "vi" ? "Trí tuệ nhân tạo Gemini 3.5 đang soạn thảo đề bài riêng biệt..." : "Gemini 3.5 is drafting unique questions for you..."}</p>
-        </div>
-      ) : errorMsg ? (
-        <div className="p-6 bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-400 rounded-xl border border-red-200 dark:border-red-900/50 text-center">
-          <ShieldAlert className="w-8 h-8 mx-auto mb-2 text-rose-500" />
-          <p className="text-sm font-semibold">{errorMsg}</p>
-          <button onClick={() => fetchQuizzes(selectedSubjects)} className="mt-4 px-4 py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-500 transition cursor-pointer select-none">
-            {language === "vi" ? "Thử lại" : "Retry"}
-          </button>
-        </div>
-      ) : (
-        quizzes.length > 0 && (
-          <div className="space-y-6">
-            {quizzes.map((quiz, quizIdx) => {
-              const isCorrect = scores[quizIdx] === true;
-              const submitted = isSubmitted;
-              const chosen = selectedAnswers[quizIdx];
+      {/* 4. Active Live Exam Board */}
+      {quizzes.length > 0 && (
+        <div className="space-y-6 animate-fadeIn" id="live-quiz-exam-board">
+          <div className="flex items-center justify-between bg-neutral-100 dark:bg-neutral-850 p-4 px-5 rounded-xl border border-neutral-200 dark:border-neutral-800">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 bg-rose-500 rounded-full animate-heartbeat"></span>
+              <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
+                {language === "vi" ? `Đề thi trắc nghiệm Lớp ${selectedGrade}: 3 câu hỏi` : `Exam Session G-${selectedGrade}: 3 topics`}
+              </span>
+            </div>
+            
+            <button
+              onClick={resetChallengeFlow}
+              id="back-to-subject-cfg-btn"
+              className="px-3 py-1 bg-white hover:bg-neutral-50 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-[11px] text-neutral-600 dark:text-neutral-300 font-bold rounded-md border border-neutral-200 dark:border-neutral-700 transition-all flex items-center gap-1"
+            >
+              ← {language === "vi" ? "Chọn lại môn học" : "Select subjects"}
+            </button>
+          </div>
+
+          {/* Quizzes List Cards */}
+          <div className="space-y-5">
+            {quizzes.map((quiz, qId) => {
+              const quizSelectedAns = selectedAnswers[qId] || "";
+              const questionScore = scores[qId];
 
               return (
                 <div
-                  key={quizIdx}
-                  className={`bg-white dark:bg-neutral-900 border ${
-                    submitted
-                      ? isCorrect
-                        ? "border-emerald-300 dark:border-emerald-800 bg-emerald-50/20 dark:bg-emerald-950/10"
-                        : "border-rose-300 dark:border-rose-800 bg-rose-50/20 dark:bg-rose-950/10"
-                      : "border-neutral-150 dark:border-neutral-800"
-                  } rounded-2xl p-6 shadow-sm`}
-                  id={`quiz-card-${quizIdx}`}
+                  key={qId}
+                  id={`quiz-card-${qId}`}
+                  className={`bg-white dark:bg-neutral-900 border rounded-2xl shadow-sm overflow-hidden transition-all ${
+                    isSubmitted
+                      ? questionScore
+                        ? "border-emerald-200 dark:border-emerald-900 ring-2 ring-emerald-50 dark:ring-emerald-950/25"
+                        : "border-rose-200 dark:border-rose-900 ring-2 ring-rose-50 dark:ring-rose-950/25"
+                      : "border-neutral-200 dark:border-neutral-800"
+                  }`}
                 >
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="px-3 py-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[11px] font-black rounded-full uppercase tracking-wider shadow-sm">
-                      {quiz.subject}
+                  {/* Topic Badge Header */}
+                  <div className="bg-neutral-50 dark:bg-neutral-850/50 p-4 border-b border-neutral-100 dark:border-neutral-800/80 flex items-center justify-between gap-4">
+                    <span className="px-3 py-1 bg-neutral-200 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 rounded-md text-[10px] font-mono tracking-wider font-bold uppercase">
+                      📌 {quiz.subject}
                     </span>
-                    {submitted && (
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
-                        isCorrect ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" : "bg-rose-100 text-rose-850 dark:bg-rose-950 dark:text-rose-300"
+
+                    {/* Score badges */}
+                    {isSubmitted && (
+                      <span className={`px-2.5 py-0.5 text-[10px] font-bold uppercase rounded-md flex items-center gap-1 font-mono ${
+                        questionScore
+                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400"
+                          : "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-400"
                       }`}>
-                        {isCorrect ? (
+                        {questionScore ? (
                           <>
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            +20 XP
+                            <CheckCircle className="w-3.5 h-3.5" /> 100% Correct (+15 XP)
                           </>
                         ) : (
                           <>
-                            <AlertCircle className="w-3.5 h-3.5" />
-                            {t.incorrectQuiz}
+                            <X className="w-3.5 h-3.5" /> Incorrect (0 XP)
                           </>
                         )}
                       </span>
                     )}
                   </div>
 
-                  <p className="text-base font-bold text-neutral-800 dark:text-neutral-100 mb-4 leading-relaxed">
-                    {quiz.question}
-                  </p>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-                    {quiz.options.map((opt, optIdx) => {
-                      const optChar = opt.trim().substring(0, 1).toUpperCase();
-                      const isSelected = chosen === optChar;
-                      const isActualAnswer = quiz.correctAnswer === optChar;
-
-                      let buttonStyle = "border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/60 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800";
-
-                      if (!submitted && isSelected) {
-                        buttonStyle = "border-orange-500 bg-orange-50/50 dark:bg-orange-950/30 text-orange-700 dark:text-neutral-100 font-bold ring-1 ring-orange-500";
-                      } else if (!submitted && currentUser?.role === "dev" && isActualAnswer) {
-                        buttonStyle = "border-emerald-500 bg-emerald-50/5 dark:bg-emerald-950/15 text-neutral-800 dark:text-neutral-200 font-medium ring-1 ring-emerald-505/20";
-                      } else if (submitted) {
-                        if (isActualAnswer) {
-                          buttonStyle = "border-emerald-500 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 font-bold ring-1 ring-emerald-500";
-                        } else if (isSelected && !isCorrect) {
-                          buttonStyle = "border-rose-500 bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-200 font-bold ring-1 ring-rose-500";
-                        }
-                      }
-
-                      return (
-                        <button
-                          key={optIdx}
-                          onClick={() => handleSelectAnswer(quizIdx, optChar)}
-                          disabled={submitted}
-                          className={`group w-full text-left p-3.5 rounded-xl border-2 text-sm transition-all duration-200 flex items-center justify-between gap-2 ${
-                            submitted 
-                              ? "cursor-not-allowed" 
-                              : "cursor-pointer hover:scale-[1.035] active:scale-[0.985] hover:shadow-md hover:border-neutral-400 dark:hover:border-neutral-600"
-                          } ${buttonStyle}`}
-                        >
-                          <div className="flex items-start gap-2">
-                            <span className="font-extrabold shrink-0 transition-all duration-200 group-hover:text-neutral-950 dark:group-hover:text-white group-hover:scale-110">{optChar}.</span>
-                            <span className="transition-all duration-200 group-hover:text-neutral-950 dark:group-hover:text-white group-hover:font-extrabold">{opt.substring(2)}</span>
-                          </div>
-                          {!submitted && currentUser?.role === "dev" && isActualAnswer && (
-                            <span className="ml-2 px-1.5 py-0.5 rounded text-[9px] bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-black uppercase shrink-0">
-                              {language === "vi" ? "Đáp án" : "Key"}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {submitted && (
-                    <div className="mt-4 p-4 rounded-xl bg-neutral-50 dark:bg-neutral-800/40 border border-neutral-150 dark:border-neutral-800 text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed">
-                      <span className="font-extrabold text-blue-600 dark:text-blue-400 block mb-1">
-                        {language === "vi" ? "GIẢI THÍCH:" : "EXPLANATION:"}
+                  {/* Question Prompt */}
+                  <div className="p-6 space-y-4">
+                    <div className="space-y-2">
+                      <span className="text-[10px] uppercase tracking-wider text-neutral-400 font-mono block">
+                        Question {qId + 1} of 3:
                       </span>
-                      <p className="font-medium">
-                        {quiz.explanation}
-                      </p>
+                      <h4 className="text-sm font-bold text-neutral-850 dark:text-neutral-100 leading-relaxed">
+                        {quiz.question}
+                      </h4>
                     </div>
-                  )}
+
+                    {/* Options Buttons Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-2">
+                      {quiz.options.map((option, opId) => {
+                        const optionChar = option.trim().startsWith("A.") 
+                          ? "A" 
+                          : option.trim().startsWith("B.") 
+                            ? "B" 
+                            : option.trim().startsWith("C.") 
+                              ? "C" 
+                              : option.trim().startsWith("D.")
+                                ? "D"
+                                : String.fromCharCode(65 + opId); // Fallback to index letter
+
+                        const isOptionSelected = quizSelectedAns === optionChar;
+                        const isCorrectAnswer = optionChar === quiz.correctAnswer;
+
+                        let optBg = "bg-neutral-50 hover:bg-neutral-100 dark:bg-neutral-850/70 border-neutral-200 dark:border-neutral-800 dark:text-neutral-200";
+                        if (isOptionSelected) {
+                          optBg = "bg-indigo-50 border-indigo-400 dark:bg-indigo-950/35 dark:border-indigo-600 text-indigo-950 dark:text-indigo-200 ring-1 ring-indigo-400";
+                        }
+
+                        // Style feedback results
+                        if (isSubmitted) {
+                          if (isCorrectAnswer) {
+                            optBg = "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-400 text-emerald-950 dark:text-emerald-300 font-semibold ring-2 ring-emerald-100 dark:ring-emerald-950";
+                          } else if (isOptionSelected && !questionScore) {
+                            optBg = "bg-rose-50 dark:bg-rose-950/35 border-rose-400 text-rose-950 dark:text-rose-300 ring-2 ring-rose-100 dark:ring-rose-950";
+                          } else {
+                            optBg = "bg-neutral-50/50 dark:bg-neutral-850/20 border-neutral-100 dark:border-neutral-850 opacity-60 text-neutral-500";
+                          }
+                        }
+
+                        return (
+                          <button
+                            key={opId}
+                            disabled={isSubmitted}
+                            onClick={() => handleOptionSelect(qId, optionChar)}
+                            className={`p-4 text-left rounded-xl border transition-all text-xs flex items-center gap-3 relative overflow-hidden ${optBg}`}
+                          >
+                            <span className={`w-6 h-6 rounded-lg font-mono font-bold text-xs flex items-center justify-center border shrink-0 ${
+                              isOptionSelected 
+                                ? "bg-indigo-600 border-indigo-600 text-white" 
+                                : isSubmitted && isCorrectAnswer
+                                  ? "bg-emerald-600 border-emerald-600 text-white"
+                                  : isSubmitted && isOptionSelected && !questionScore
+                                    ? "bg-rose-600 border-rose-600 text-white"
+                                    : "bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-350 dark:border-neutral-700"
+                            }`}>
+                              {optionChar}
+                            </span>
+                            
+                            <span className="leading-tight shrink">{option}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Explanations Toggle */}
+                    {isSubmitted && (
+                      <div className="pt-3 border-t border-neutral-100 dark:border-neutral-850 bg-neutral-50/60 dark:bg-neutral-850/30 p-4 rounded-xl space-y-2">
+                        <span className="text-[10px] font-mono tracking-wider text-indigo-500 dark:text-indigo-400 uppercase font-black flex items-center gap-1">
+                          ✨ {t.showExplanation}
+                        </span>
+                        <p className="text-xs text-neutral-700 dark:text-neutral-300 leading-relaxed font-medium">
+                          {quiz.explanation || (language === "vi" ? "Đáp án chính xác là " + quiz.correctAnswer : "The correct solution is " + quiz.correctAnswer)}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}
+          </div>
 
-            {!isSubmitted ? (
-              <div className="text-center pt-4">
+          {/* Score Summary Metrics */}
+          {isSubmitted && (
+            <div className="bg-neutral-900 border border-neutral-800 text-white rounded-2xl p-6 text-center space-y-4 animate-fadeIn shadow-xl" id="scores-card-summary">
+              <h3 className="text-sm font-mono tracking-widest text-neutral-400 uppercase">
+                {t.score}
+              </h3>
+              
+              <div className="flex items-center justify-center gap-4">
+                {/* Count */}
+                <span className="text-5xl font-black text-indigo-400 tracking-tight">
+                  {Object.values(scores).filter(Boolean).length} / 3
+                </span>
+                
+                <span className="text-neutral-600 text-3xl font-light">|</span>
+
+                {/* Passed status */}
+                <div className="text-left">
+                  <span className={`text-md font-extrabold uppercase ${
+                    Object.values(scores).filter(Boolean).length >= 2 ? "text-emerald-400" : "text-amber-400"
+                  }`}>
+                    {Object.values(scores).filter(Boolean).length >= 2 ? t.passed : t.failed}
+                  </span>
+                  <p className="text-[11px] text-neutral-400 block font-mono">
+                    +{Object.values(scores).filter(Boolean).length * 15} XP Received
+                  </p>
+                </div>
+              </div>
+
+              {/* Retry New Challenge */}
+              <div className="pt-2">
                 <button
-                  onClick={handleSubmitQuiz}
-                  className="px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl shadow-md transition transform hover:scale-105 inline-flex items-center gap-2 cursor-pointer select-none"
+                  onClick={resetChallengeFlow}
+                  id="exam-flow-retry-btn"
+                  className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all"
                 >
-                  <CheckCircle2 className="w-5 h-5" />
-                  {language === "vi" ? "GỬI ĐÁP ÁN NHẬN XP" : "SUBMIT ANSWERS FOR XP"}
+                  {t.tryAgain}
                 </button>
               </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="p-4 rounded-xl bg-emerald-50 text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 text-center text-sm font-bold flex items-center justify-center gap-2">
-                  <CheckCircle2 className="w-5 h-5" />
-                  {t.completedDailyQuiz}
-                </div>
-                
-                <div className="text-center pt-2">
-                  <button
-                    onClick={() => {
-                      submittingRef.current = false;
-                      setIsConfiguringSubjects(true);
-                      setQuizzes([]);
-                      setSelectedAnswers({});
-                      setIsSubmitted(false);
-                      setScores({});
-                    }}
-                    className="px-8 py-3.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black rounded-xl shadow-md transition transform hover:scale-105 inline-flex items-center gap-2 cursor-pointer select-none uppercase tracking-wider text-xs"
-                  >
-                    <Zap className="w-4 h-4 fill-current text-yellow-300" />
-                    {language === "vi" ? "Tiếp tục tạo thử thách mới 🚀" : "Create Another Challenge 🚀"}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )
+            </div>
+          )}
+
+          {/* Bottom Action bar */}
+          {!isSubmitted && (
+            <div className="bg-white dark:bg-neutral-900 p-4 rounded-xl border border-neutral-200 dark:border-neutral-800 flex items-center justify-between gap-4">
+              <span className="text-[10pt] text-neutral-500 font-mono hidden sm:inline">
+                💡 {language === "vi" ? "Đáp án không thể thay đổi sau khi chấm điểm!" : "Solutions lock in upon scoring submission."}
+              </span>
+              
+              <button
+                onClick={handleSubmitQuiz}
+                id="submit-exam-scoring-btn"
+                className="w-full sm:w-auto px-10 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs tracking-wide uppercase rounded-xl shadow-lg hover:shadow-indigo-500/20 transition-all"
+              >
+                {t.submitBtn}
+              </button>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
