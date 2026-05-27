@@ -1032,7 +1032,7 @@ export default function App() {
     setSubmissions((prev) => [...prev, newSubmission]);
 
     // Track completed quiz questions solved count under daily limits
-    const todayStr = new Date().toISOString().split("T")[0];
+    const todayStr = getLocalDateString();
 
     const prevDate = currentUser.lastQuizSolvedDate || "";
     let currentSolvedCount = currentUser.quizSolvedCountToday || 0;
