@@ -1,358 +1,257 @@
-import React, { useState } from "react";
-import { User, AppLanguage, AppTheme } from "../types";
-import { translations } from "../utils/translations";
-import { Save, Languages, Sun, Moon, ShieldAlert } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { 
+  Key, 
+  Settings, 
+  RotateCcw, 
+  FolderSync, 
+  HelpCircle, 
+  Laptop, 
+  Moon, 
+  Sun, 
+  Globe, 
+  Eye, 
+  EyeOff,
+  UserCheck,
+  CheckCircle2,
+  Lock,
+  Network
+} from "lucide-react";
 
 interface SettingsTabProps {
-  currentUser: User | null;
-  language: AppLanguage;
-  theme: AppTheme;
-  onUpdateSettings: (lang: AppLanguage, theme: AppTheme) => void;
-  onUpdateDevXpLevel?: (level: number, xp: number) => void;
-  onUpdateProfile?: (newEmail: string, newUsername: string, newPassword?: string) => boolean;
-  onDeleteAccount?: (password: string) => boolean;
-  users: User[];
+  currentUser: any;
+  language: "vi" | "en";
+  darkMode: boolean;
+  onUpdateCurrentUser: (updatedFields: Partial<any>) => void;
+  onToggleDarkMode: () => void;
+  onToggleLanguage: () => void;
 }
 
-export default function SettingsTab({
-  currentUser,
-  language,
-  theme,
-  onUpdateSettings,
-  onUpdateDevXpLevel,
-  onUpdateProfile,
-  onDeleteAccount,
-  users,
+export default function SettingsTab({ 
+  currentUser, 
+  language, 
+  darkMode, 
+  onUpdateCurrentUser, 
+  onToggleDarkMode, 
+  onToggleLanguage 
 }: SettingsTabProps) {
-  const t = translations[language];
+  
+  const [apiKeyInput, setApiKeyInput] = useState("");
+  const [showKey, setShowKey] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
 
-  const [langInput, setLangInput] = useState<AppLanguage>(language);
-  const [themeInput, setThemeInput] = useState<AppTheme>(theme);
+  useEffect(() => {
+    // Read local customized API key if exists
+    const stored = localStorage.getItem("gemini_user_api_key") || "";
+    setApiKeyInput(stored);
+  }, []);
 
-  // Custom API key stored in browser local storage for private AI features
-  const [apiKeyInput, setApiKeyInput] = useState(() => {
-    return localStorage.getItem("gemini_api_key") || "";
-  });
-
-  // Profile credentials inputs
-  const [emailInput, setEmailInput] = useState(currentUser?.email || "");
-  const [usernameInput, setUsernameInput] = useState(currentUser?.username || "");
-  const [passwordInput, setPasswordInput] = useState(currentUser?.password || "");
-
-  // Search profile states
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-
-  // Delete account confirmation
-  const [deletePasswordConfirm, setDeletePasswordConfirm] = useState("");
-
-  const handleDeleteClick = () => {
-    if (!deletePasswordConfirm) {
-      window.showToast?.(
-        language === "vi" ? "Vui lòng nhập mật khẩu xác nhận!" : "Please enter your password to confirm!",
-        "error"
-      );
-      return;
-    }
-    if (onDeleteAccount) {
-      onDeleteAccount(deletePasswordConfirm);
-    }
+  const handleSaveApiKey = () => {
+    localStorage.setItem("gemini_user_api_key", apiKeyInput.trim());
+    setIsSaved(true);
+    window.showToast?.(
+      language === "vi" 
+        ? "Đã lưu khóa API Gemini cá nhân thành công!" 
+        : "Successfully saved your custom Gemini model API Key!",
+      "success"
+    );
+    setTimeout(() => setIsSaved(false), 2000);
   };
 
-  const handleSaveSettings = () => {
-    if (!usernameInput.trim()) {
-      window.showToast?.(
-        language === "vi" ? "Tên đăng nhập không được để trống!" : "Username cannot be empty!",
-        "error"
-      );
-      return;
-    }
-    if (!emailInput.trim() || !emailInput.includes("@")) {
-      window.showToast?.(
-        language === "vi" ? "Vui lòng nhập Email hợp lệ!" : "Please enter a valid email address!",
-        "error"
-      );
-      return;
-    }
-    if (passwordInput && passwordInput.length < 6) {
-      window.showToast?.(
-        language === "vi" ? "Mật khẩu phải dài ít nhất 6 ký tự!" : "Password must be at least 6 characters!",
-        "error"
-      );
-      return;
-    }
-
-    if (onUpdateProfile) {
-      const success = onUpdateProfile(emailInput.trim(), usernameInput.trim(), passwordInput);
-      if (!success) return; // Stop if username or check is invalid
-    }
-
-    onUpdateSettings(langInput, themeInput);
-    localStorage.setItem("gemini_api_key", apiKeyInput.trim());
-    window.showToast?.(t.savedAlert, "success");
+  const handleClearApiKey = () => {
+    localStorage.removeItem("gemini_user_api_key");
+    setApiKeyInput("");
+    window.showToast?.(
+      language === "vi" 
+        ? "Đã xóa khóa API Key thành công. Sử dụng khóa hệ thống." 
+        : "Cleared personal API Key. Falling back to system defaults.",
+      "info"
+    );
   };
-
-  // Filter users based on query and role permissions
-  const filteredSearchUsers = searchQuery.trim() === "" 
-    ? [] 
-    : users.filter((u) => {
-        const term = searchQuery.toLowerCase();
-        const matchesQuery = 
-          u.username.toLowerCase().includes(term) || 
-          u.fullName.toLowerCase().includes(term) || 
-          (u.email && u.email.toLowerCase().includes(term));
-
-        if (!matchesQuery) return false;
-
-        if (currentUser?.role === "dev") {
-          return true; // Dev sees everyone
-        } else if (currentUser?.role === "teacher") {
-          return u.role === "student"; // Teacher only sees students
-        }
-        return false;
-      });
 
   return (
-    <div className="bg-white dark:bg-neutral-900 border border-neutral-150 dark:border-neutral-800 rounded-2xl p-6 shadow-sm max-w-xl mx-auto space-y-8 animate-fadeIn" id="settings-container">
-      <div className="flex items-center gap-3 border-b border-neutral-100 dark:border-neutral-800 pb-4">
-        <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-500 rounded-xl">
-          <Languages className="w-6 h-6" />
-        </div>
-        <div>
-          <h2 className="text-xl font-black text-neutral-900 dark:text-neutral-100">
-            {t.settingsTitle}
-          </h2>
-          <p className="text-xs text-neutral-400">
-            {language === "vi" ? "Định cấu hình tài khoản, ngôn ngữ và tìm kiếm hồ sơ" : "Configure account, language options, styling & explore members"}
-          </p>
-        </div>
-      </div>
-
-      <div className="space-y-6">
-        {/* Account Profile Editing */}
-        {currentUser && (
-          <div className="space-y-4 border-b border-neutral-100 dark:border-neutral-800 pb-6">
-            <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest font-mono">
-              {language === "vi" ? "THÔNG TIN TÀI KHOẢN" : "ACCOUNT PROFILE"}
-            </label>
-            <div className="space-y-4 text-xs font-semibold">
-              {/* Username */}
-              <div className="space-y-1">
-                <label className="text-neutral-600 dark:text-neutral-300">
-                  {language === "vi" ? "Tên đăng nhập" : "Username"}
-                </label>
-                <input
-                  type="text"
-                  value={usernameInput}
-                  onChange={(e) => setUsernameInput(e.target.value)}
-                  className="w-full p-2.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:outline-none focus:border-blue-500 font-mono"
-                />
-              </div>
-              
-              {/* Email */}
-              <div className="space-y-1">
-                <label className="text-neutral-600 dark:text-neutral-300">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={emailInput}
-                  onChange={(e) => setEmailInput(e.target.value)}
-                  className="w-full p-2.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:outline-none focus:border-blue-500 font-mono"
-                />
-              </div>
-
-              {/* Password */}
-              <div className="space-y-1">
-                <label className="text-neutral-600 dark:text-neutral-300">
-                  {language === "vi" ? "Mật khẩu" : "Password"}
-                </label>
-                <input
-                  type="password"
-                  value={passwordInput}
-                  onChange={(e) => setPasswordInput(e.target.value)}
-                  className="w-full p-2.5 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 text-neutral-950 dark:text-neutral-100 rounded-lg focus:outline-none focus:border-blue-500 font-mono"
-                />
-              </div>
-            </div>
+    <div className="space-y-6 max-w-3xl mx-auto p-2" id="settings-tab-view-container">
+      
+      {/* Settings Card Base */}
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-sm overflow-hidden">
+        
+        {/* Header decoration */}
+        <div className="bg-neutral-50 dark:bg-neutral-850 p-6 border-b border-neutral-200/60 dark:border-neutral-800/80 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+            <Settings className="w-5 h-5" />
           </div>
-        )}
-
-        {/* Language Selection */}
-        <div className="space-y-2">
-          <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest font-mono">
-            {t.languageLabel}
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => setLangInput("vi")}
-              className={`p-3 rounded-xl border-2 text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
-                langInput === "vi"
-                  ? "border-blue-500 bg-blue-50/45 text-blue-600 dark:text-blue-400 dark:bg-blue-950/20"
-                  : "border-neutral-100 dark:border-neutral-800 text-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-900"
-              }`}
-            >
-              <span>🇻🇳 Tiếng Việt</span>
-            </button>
-            <button
-              onClick={() => setLangInput("en")}
-              className={`p-3 rounded-xl border-2 text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
-                langInput === "en"
-                  ? "border-blue-500 bg-blue-50/45 text-blue-600 dark:text-blue-400 dark:bg-blue-950/20"
-                  : "border-neutral-100 dark:border-neutral-800 text-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-900"
-              }`}
-            >
-              <span>🇺🇸 English</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Theme Switching */}
-        <div className="space-y-2 pb-6 border-b border-neutral-100 dark:border-neutral-800">
-          <label className="block text-xs font-bold text-neutral-400 uppercase tracking-widest font-mono">
-            {t.themeLabel}
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => setThemeInput("light")}
-              className={`p-3 rounded-xl border-2 text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
-                themeInput === "light"
-                  ? "border-blue-500 bg-blue-50/45 text-blue-600"
-                  : "border-neutral-100 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100"
-              }`}
-            >
-              <Sun className="w-5 h-5 text-amber-500" />
-              <span>{t.lightTheme}</span>
-            </button>
-            <button
-              onClick={() => setThemeInput("dark")}
-              className={`p-3 rounded-xl border-2 text-sm font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
-                themeInput === "dark"
-                  ? "border-blue-500 bg-blue-950/35 text-blue-400"
-                  : "border-neutral-100 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100"
-              }`}
-            >
-              <Moon className="w-5 h-5 text-indigo-400" />
-              <span>{t.darkTheme}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Custom Gemini API Key configuration */}
-        <div className="space-y-4 pb-6 border-b border-neutral-100 dark:border-neutral-800">
-          <label className="block text-xs font-bold uppercase tracking-widest font-mono text-neutral-500 dark:text-neutral-400">
-            {language === "vi" ? "CẤU HÌNH TRÍ TUỆ NHÂN TẠO AI (GEMINI)" : "AI INTELLIGENCE CONFIGURATION (GEMINI)"}
-          </label>
-          <div className="bg-blue-50/20 dark:bg-neutral-950/40 p-4 rounded-xl border border-blue-150/45 dark:border-neutral-850 space-y-3">
-            <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed font-semibold">
-              {language === "vi"
-                ? "💡 Để sử dụng Tính năng tạo bộ câu hỏi tự động bằng AI (Model: Gemini 3.5 Flash), hãy dán mã API Key của bạn tại đây. Khóa này chỉ được lưu trữ riêng tư trực tiếp trong trình duyệt cá nhân của bạn."
-                : "💡 To use automatic quiz and question generation via AI (Model: Gemini 3.5 Flash), paste your Gemini API Key below. This key is stored fully locally & privately inside your browser storage."}
-            </p>
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold text-neutral-600 dark:text-neutral-300">
-                Gemini API Key (Mục không bắt buộc)
-              </label>
-              <input
-                type="password"
-                placeholder="AIzaSy..."
-                value={apiKeyInput}
-                onChange={(e) => setApiKeyInput(e.target.value)}
-                className="w-full p-2.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg text-xs focus:outline-none focus:border-blue-500 font-mono"
-              />
-            </div>
-            {apiKeyInput ? (
-              <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1.5 animate-pulse">
-                <span>●</span> {language === "vi" ? "Đã bật: Đang sử dụng API Key cá nhân để tải AI đề thi thời gian thực." : "Active: Using your custom API Key for real-time AI generation."}
-              </p>
-            ) : (
-              <p className="text-[10px] text-amber-500 dark:text-amber-400 font-bold flex items-center gap-1.5">
-                <span>○</span> {language === "vi" ? "Chế độ dự phòng: Dùng ngay ngân hàng câu hỏi học sinh phong phú hơn 1000 câu (offline & cực nhanh)." : "Fallback mode active: Using robust pre-generated 1000+ classroom question bank."}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Developer Sandbox Level controls replaced by Command Board guide */}
-        {currentUser?.role === "dev" && (
-          <div className="p-5 rounded-2xl bg-cyan-950/20 border border-cyan-900/50 space-y-3 font-mono">
-            <h4 className="font-extrabold text-cyan-400 flex items-center gap-2 text-sm uppercase tracking-wide">
-              <ShieldAlert className="w-4 h-4 text-cyan-400" />
-              {t.devControlTitle}
-            </h4>
-            <p className="text-neutral-350 dark:text-neutral-300 text-xs leading-relaxed">
-              {language === "vi" 
-                ? "💡 Điều khiển thủ công đã được chuyển thành Bảng Lệnh để tăng năng suất. Hãy bấm phím tổ hợp sau để mở máy chủ điều khiển:" 
-                : "💡 Manual adjustments have been upgraded to the Command Board. Use the hotkey below to spin up the Admin Shell:"}
-            </p>
-            <div className="flex items-center gap-3 p-3 bg-neutral-950/85 rounded-xl border border-neutral-800 text-center justify-center">
-              <kbd className="px-2.5 py-1 bg-neutral-800 border border-neutral-700 text-neutral-100 rounded-lg text-xs font-black select-none shadow">
-                Ctrl
-              </kbd>
-              <span className="text-neutral-550 text-xs font-bold font-sans text-neutral-400">+</span>
-              <kbd className="px-2.5 py-1 bg-neutral-800 border border-neutral-700 text-neutral-100 rounded-lg text-xs font-black select-none shadow">
-                /
-              </kbd>
-            </div>
-            <p className="text-[10px] text-center text-cyan-500">
-              {language === "vi" ? "Gõ /lv <số> hoặc /ban <email>" : "Type /lv <number> or /ban <email>"}
+          <div>
+            <h2 className="text-md font-black tracking-tight text-neutral-900 dark:text-white">
+              {language === "vi" ? "Tùy Chỉnh & Kết Nối Hệ Thống" : "System Customization Settings"}
+            </h2>
+            <p className="text-xs text-neutral-400">
+              {language === "vi" ? "Quản lý khóa API, đồng bộ hóa thiết bị, ngôn ngữ hiển thị và chủ đề." : "Manage backend key integrations, language localized values, and visual styles."}
             </p>
           </div>
-        )}
+        </div>
 
-        {/* Danger Zone: Delete Account */}
-        <div className="pt-6 border-t border-rose-200/50 dark:border-rose-950/40 space-y-4">
-          <label className="block text-xs font-bold text-rose-500 dark:text-rose-400 uppercase tracking-widest font-mono flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-            {language === "vi" ? "VÙNG NGUY HIỂM" : "DANGER ZONE"}
-          </label>
+        {/* Form contents */}
+        <div className="p-6 space-y-6">
           
-          <div className="bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200/60 dark:border-rose-950/60 rounded-xl p-4 space-y-3">
-            <p className="text-xs font-bold text-rose-700 dark:text-rose-300">
-              {language === "vi" 
-                ? "⚠️ CẢNH BÁO: XÓA TÀI KHOẢN VĨNH VIỄN" 
-                : "⚠️ WARNING: PERMANENT ACCOUNT DELETION"}
-            </p>
-            <p className="text-[11px] leading-relaxed text-rose-600/80 dark:text-rose-400/85 font-semibold">
-              {language === "vi"
-                ? "Hành động này sẽ xóa tài khoản của bạn vĩnh viễn khỏi cơ sở dữ liệu và không thể khôi phục lại. Toàn bộ tiến trình học tập, bảng xếp hạng và các bài nộp của bạn sẽ bị xóa bỏ."
-                : "This action will permanently delete your account from the server database. It is completely irreversible. All your study progress, learning history, classrooms, and grades will be lost forever."}
-            </p>
+          {/* Section A: Gemini API Key configuration */}
+          <div className="space-y-4 border-b border-neutral-150 dark:border-neutral-800/60 pb-6" id="settings-api-key-panel">
+            <div className="flex justify-between items-start gap-4">
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-neutral-900 dark:text-neutral-50 flex items-center gap-1.5">
+                  <Key className="w-4 h-4 text-neutral-400" />
+                  {language === "vi" ? "Gemini API Key (Cá nhân)" : "Personal Gemini Model Key"}
+                </span>
+                <p className="text-[11px] text-neutral-400">
+                  {language === "vi" 
+                    ? "Nhập API Key riêng từ Google AI Studio để chủ động tạo đề thi nhanh hơn và không lo giới hạn truy cập." 
+                    : "Enter your private API credential for higher limits and unlimited question generation speed."}
+                </p>
+              </div>
+              <a 
+                href="https://aistudio.google.com/" 
+                target="_blank" 
+                rel="noreferrer"
+                className="text-[10px] uppercase font-bold text-indigo-600 dark:text-indigo-400 hover:underline shrink-0"
+              >
+                {language === "vi" ? "Lấy khóa miễn phí →" : "Get Free Key →"}
+              </a>
+            </div>
 
-            <div className="space-y-2 mt-2">
-              <label className="block text-[11px] font-bold text-neutral-600 dark:text-neutral-300">
-                {language === "vi" 
-                  ? "Nhập mật khẩu hiện tại để xác nhận xóa:" 
-                  : "Enter your current password to confirm deletion:"}
-              </label>
-              <div className="flex flex-col sm:flex-row gap-2">
+            {/* Input fields */}
+            <div className="flex gap-2.5 items-center">
+              <div className="relative flex-1">
                 <input
-                  type="password"
-                  placeholder={language === "vi" ? "Mật khẩu xác nhận..." : "Confirm password..."}
-                  value={deletePasswordConfirm}
-                  onChange={(e) => setDeletePasswordConfirm(e.target.value)}
-                  className="flex-1 p-2 bg-white dark:bg-neutral-950 border border-rose-200 dark:border-rose-950/60 text-neutral-900 dark:text-neutral-100 rounded-lg text-xs focus:outline-none focus:border-rose-500 font-mono"
+                  id="gemini-user-key-input"
+                  type={showKey ? "text" : "password"}
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  placeholder="Paste your AI Studio GEMINI_API_KEY here..."
+                  className="w-full bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs p-2.5 pl-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-neutral-900 dark:text-neutral-100"
                 />
+                
                 <button
-                  type="button"
-                  onClick={handleDeleteClick}
-                  className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-lg transition duration-150 cursor-pointer shadow-sm shadow-rose-500/10 shrink-0"
+                  onClick={() => setShowKey(!showKey)}
+                  className="absolute right-3 top-2.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
                 >
-                  {language === "vi" ? "Xác nhận xóa" : "Confirm Delete"}
+                  {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+
+              {/* Action buttons */}
+              <button
+                onClick={handleSaveApiKey}
+                id="save-user-api-key-btn"
+                className="px-4 py-2.5 bg-neutral-900 hover:bg-neutral-850 dark:bg-indigo-600 dark:hover:bg-indigo-500 text-white font-extrabold text-xs rounded-lg shadow-sm transition-all"
+              >
+                {isSaved ? (
+                  <span className="flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Saved</span>
+                ) : (
+                  language === "vi" ? "Lưu" : "Save"
+                )}
+              </button>
+
+              {apiKeyInput && (
+                <button
+                  onClick={handleClearApiKey}
+                  className="p-2.5 text-neutral-400 hover:text-red-600 border border-neutral-200 dark:border-neutral-700 rounded-lg bg-neutral-50 dark:bg-neutral-800/30"
+                  title="Xóa khóa API"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            {/* API Status Labels */}
+            <div className="bg-neutral-50 dark:bg-neutral-850 p-3 rounded-lg border border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs text-neutral-500">
+                <Network className="w-3.5 h-3.5 text-neutral-400" />
+                <span>{language === "vi" ? "Phương thức kết nối:" : "Gateway link type:"}</span>
+              </div>
+              
+              {apiKeyInput ? (
+                <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1.5 animate-pulse">
+                  <span>●</span> {language === "vi" ? "Đã bật: Đang sử dụng API Key cá nhân để tải AI đề thi thời gian thực." : "Active: Using your custom API Key for real-time AI generation."}
+                </p>
+              ) : (
+                <p className="text-[10px] text-neutral-500 dark:text-neutral-400 font-bold flex items-center gap-1.5">
+                  <span>○</span> {language === "vi" ? "Chế độ mặc định: Sử dụng AI thông minh bằng cổng API hệ thống (hoặc cấu hình API Key riêng phía trên)." : "Default mode active: Using centralized system AI gateway (or provide your backup API Key above)."}
+                </p>
+              )}
             </div>
           </div>
-        </div>
 
-        <button
-          onClick={handleSaveSettings}
-          className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-extrabold rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-sm select-none"
-        >
-          <Save className="w-5 h-5" />
-          {t.saveBtn}
-        </button>
+          {/* Section B: UI and Theme selection toggle */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-neutral-150 dark:border-neutral-800/60 pb-6" id="settings-theme-localization-panel">
+            
+            {/* Language Selection */}
+            <div className="p-4 bg-neutral-50 dark:bg-neutral-850/40 rounded-xl border border-neutral-200/50 dark:border-neutral-800 flex items-center justify-between gap-4">
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-neutral-950 dark:text-neutral-50 flex items-center gap-1.5">
+                  <Globe className="w-4 h-4 text-indigo-500" />
+                  {language === "vi" ? "Ngôn Ngữ Học Tập" : "Curriculum Language"}
+                </span>
+                <p className="text-[10px] text-neutral-400">
+                  {language === "vi" ? "Thay đổi ngôn ngữ cho giao diện học tập." : "Toggle Vietnamese/English standard displays."}
+                </p>
+              </div>
+
+              <button
+                onClick={onToggleLanguage}
+                id="settings-lang-switch-btn"
+                className="px-4 py-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-xs font-bold rounded-lg text-neutral-800 dark:text-neutral-200 transition-all hover:bg-neutral-100 dark:hover:bg-neutral-700"
+              >
+                Vietnamese (VI)
+              </button>
+            </div>
+
+            {/* Dark mode selection */}
+            <div className="p-4 bg-neutral-50 dark:bg-neutral-850/40 rounded-xl border border-neutral-200/50 dark:border-neutral-800 flex items-center justify-between gap-4">
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-neutral-950 dark:text-neutral-50 flex items-center gap-1.5">
+                  {darkMode ? <Moon className="w-4 h-4 text-amber-400" /> : <Sun className="w-4 h-4 text-amber-500" />}
+                  {language === "vi" ? "Chế Độ Giao Diện" : "Visual Theme Style"}
+                </span>
+                <p className="text-[10px] text-neutral-400">
+                  {language === "vi" ? "Chuyển đổi giao diện Sáng / Tối bảo vệ mắt." : "Protect eyes with Dark mode."}
+                </p>
+              </div>
+
+              <button
+                onClick={onToggleDarkMode}
+                id="settings-theme-switch-btn"
+                className="p-2 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-800 dark:text-neutral-200 hover:bg-neutral-100"
+              >
+                {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Section C: Role metadata indicator */}
+          <div className="p-4 bg-indigo-50/40 dark:bg-neutral-850 rounded-xl border border-indigo-100/50 dark:border-neutral-800/80 flex flex-col sm:flex-row items-center justify-between gap-4" id="settings-sync-panel">
+            <div className="space-y-1 text-center sm:text-left">
+              <span className="text-xs font-bold text-neutral-900 dark:text-white flex items-center justify-center sm:justify-start gap-1.5">
+                <UserCheck className="w-4.5 h-4.5 text-indigo-500" />
+                {language === "vi" ? "Danh Tính Người Dùng & Đồng Bộ" : "Account Identity & Cloud Sync"}
+              </span>
+              <p className="text-[10px] text-neutral-500">
+                {language === "vi" 
+                  ? "Hệ thống tự động đồng bộ hóa tất cả lịch sử làm bài thông qua cơ sở dữ liệu lưu trữ đám mây đa thiết bị." 
+                  : "All grades and solved activities automatically sync to the database."}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-1 text-[9px] uppercase font-mono bg-indigo-100 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-400 rounded-full font-extrabold border border-indigo-200/50">
+                User-ID: {currentUser.id || "Anonymous"}
+              </span>
+              <span className="px-2 py-1 text-[9px] uppercase font-mono bg-neutral-900 text-neutral-300 rounded mx-auto block max-w-xs text-center font-bold">
+                {currentUser.role === "developer" ? "Developer Tools Active" : "Regular Student Account"}
+              </span>
+            </div>
+          </div>
+
+        </div>
       </div>
+      
     </div>
   );
 }
